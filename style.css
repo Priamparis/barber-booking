@@ -215,7 +215,7 @@ footer span:first-child { color: var(--gold-light); font-weight: 900; }
 }
 
 @media (max-width: 620px) {
-  :root { --bar-height: 64px; --wordmark-size: clamp(26px, 8.25vw, 50px); }
+  :root { --bar-height: 64px; --wordmark-size: clamp(28px, 11.5vw, 56px); }
   .topbar { gap: 10px; padding: 7px 10px; }
   .topbar-meta { gap: 6px; font-size: 8px; letter-spacing: .08em; }
   .topbar-meta > :nth-child(n+3) { display: none; }
