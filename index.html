@@ -31,7 +31,19 @@
     const app = document.getElementById('app');
     let page = new URLSearchParams(location.hash.slice(1)).has('manage') ? 'manage' : 'book';
     let service = 'cut', selectedDate = '', selectedSlot = '', manageMode = '', manageToken = '';
-    let adminDate = '', toastTimer;
+    let adminDate = '', toastTimer, passwordSetup = false;
+
+    const authLink = new URLSearchParams(location.hash.slice(1));
+    if (['invite', 'recovery'].includes(authLink.get('type')) && authLink.get('access_token') && authLink.get('refresh_token')) {
+      setSession({
+        access_token: authLink.get('access_token'),
+        refresh_token: authLink.get('refresh_token'),
+        expires_at: Date.now() + Number(authLink.get('expires_in') || 3600) * 1000
+      });
+      passwordSetup = true;
+      page = 'admin';
+      history.replaceState({}, '', location.pathname + location.search);
+    }
 
     function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function dateObj(key) { const [y,m,d] = key.split('-').map(Number); return new Date(Date.UTC(y,m-1,d,12)); }
@@ -77,6 +89,17 @@
       if(!response.ok||!value?.access_token) { clearSession(); return ''; }
       setSession({access_token:value.access_token,refresh_token:value.refresh_token,expires_at:Date.now()+value.expires_in*1000});
       return value.access_token;
+    }
+    async function updateAccountPassword(password) {
+      const token = await validAccessToken();
+      if (!token) throw new Error('Pozvánka vypršala. Požiadajte o novú.');
+      const response = await fetch(`${cfg.supabaseUrl.replace(/\/$/,'')}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json','apikey':cfg.publicKey,'Authorization':`Bearer ${token}`},
+        body: JSON.stringify({password})
+      });
+      const result = await response.json().catch(()=>({}));
+      if (!response.ok) throw new Error(result.msg || result.message || 'Heslo sa nepodarilo uložiť.');
     }
     function toast(text) { const el=document.getElementById('toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
     function setPage(next) {
@@ -172,6 +195,18 @@
     }
     function timeOptions(value='08:00') { return Array.from({length:18},(_,i)=>`${String(i+6).padStart(2,'0')}:00`).map(t=>`<option value="${t}" ${t===value?'selected':''}>${t}</option>`).join(''); }
     async function renderAdmin() {
+      if (passwordSetup) {
+        app.innerHTML=`${header('Dokončenie účtu','Nastav si<br>heslo.','Zvoľte si vlastné heslo pre prístup do administrácie.')}<section class='panel'><form id='password-setup-form' class='form-grid'><div class='field'><label for='new-password'>Nové heslo</label><input id='new-password' name='password' type='password' autocomplete='new-password' minlength='12' required></div><div class='field'><label for='confirm-password'>Zopakovať heslo</label><input id='confirm-password' name='confirm' type='password' autocomplete='new-password' minlength='12' required></div><div class='field full'><p class='note'>Heslo musí mať aspoň 12 znakov. Uložte si ho bezpečne.</p><button class='primary' type='submit'>Nastaviť heslo</button></div></form></section>`;
+        app.querySelector('#password-setup-form').onsubmit=async e=>{
+          e.preventDefault();
+          const form=new FormData(e.currentTarget), password=String(form.get('password')||'');
+          if(password!==String(form.get('confirm')||''))return toast('Heslá sa nezhodujú.');
+          const button=e.currentTarget.querySelector('button[type=submit]');button.disabled=true;button.textContent='Ukladám…';
+          try { await updateAccountPassword(password);passwordSetup=false;toast('Heslo je nastavené.');await render(); }
+          catch(error) { button.disabled=false;button.textContent='Nastaviť heslo';toast(error.message); }
+        };
+        return;
+      }
       if(!storedSession()) {
         app.innerHTML=`${header('Barber / administrácia','Otváram<br>kalendár.','Prihláste sa cez účet, ktorý má administrátorské oprávnenie v Supabase.')}<section class="panel"><form id="login-form" class="form-grid"><div class="field"><label for="admin-email">E-mail</label><input id="admin-email" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="admin-password">Heslo</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required></div><div class="field full"><button class="primary" type="submit">Prihlásiť sa</button></div></form></section>`;
         app.querySelector('#login-form').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{await login(String(f.get('email')),String(f.get('password')));render();}catch(error){toast(error.message);}};return;
