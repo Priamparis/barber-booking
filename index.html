@@ -53,6 +53,8 @@
         const token = await validAccessToken();
         if (!token) throw new Error('Prihláste sa do administrácie.');
         headers.Authorization = `Bearer ${token}`;
+      } else {
+        headers.Authorization = `Bearer ${cfg.publicKey}`;
       }
       const response = await fetch(`${cfg.supabaseUrl.replace(/\/$/,'')}/functions/v1/booking-api`,{
         method:'POST',headers,body:JSON.stringify({action,...body})
