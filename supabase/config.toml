@@ -1,0 +1,7 @@
+project_id = "barber-booking"
+
+[functions.booking-api]
+verify_jwt = false
+
+[functions.dispatch-notifications]
+verify_jwt = false
