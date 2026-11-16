@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171714">
+  <title>Rezervácie — barber</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #171714;
+      --paper: #f2f0e9;
+      --card: #fffefa;
+      --line: #d5d1c6;
+      --muted: #747168;
+      --acid: #d7f36b;
+      --warn: #f4d3c7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; color: inherit; }
+    .topbar { background: var(--ink); color: var(--paper); padding: 17px max(22px, calc((100vw - 1080px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand { font-weight: 900; letter-spacing: -.07em; text-transform: uppercase; font-size: 17px; }
+    .brand span { color: var(--acid); }
+    nav { display: flex; gap: 7px; }
+    .nav-btn { border: 1px solid #56564f; padding: 9px 12px; color: inherit; background: transparent; font-size: 12px; text-transform: uppercase; }
+    .nav-btn.active, .nav-btn:hover { background: var(--acid); border-color: var(--acid); color: var(--ink); }
+    main { width: min(100% - 36px, 920px); margin: 48px auto 90px; }
+    .page-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 28px; }
+    .eyebrow, .label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+    h1 { font-size: clamp(34px, 7vw, 64px); line-height: .95; letter-spacing: -.09em; text-transform: uppercase; margin: 12px 0 0; }
+    h2 { text-transform: uppercase; font-size: 16px; letter-spacing: -.04em; margin: 0 0 14px; }
+    h3 { margin: 0; font-size: 14px; text-transform: uppercase; }
+    p { line-height: 1.55; }
+    .lede { color: var(--muted); max-width: 470px; margin: 0; font-size: 13px; }
+    .section { margin: 28px 0; }
+    .section-title { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+    .service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+    .service-card { text-align: left; border: 1px solid var(--line); background: var(--card); padding: 17px; min-height: 105px; }
+    .service-card:hover, .service-card.selected { border: 2px solid var(--ink); padding: 16px; background: var(--acid); }
+    .service-name { font-weight: 800; text-transform: uppercase; font-size: 13px; display: block; }
+    .service-duration { display: block; margin-top: 18px; font-size: 12px; }
+    .date-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .date-chip, .slot { border: 1px solid var(--line); background: var(--card); padding: 12px 14px; }
+    .date-chip.selected, .slot.selected { border: 2px solid var(--ink); padding: 11px 13px; background: var(--acid); }
+    .date-chip strong { display: block; text-transform: uppercase; font-size: 12px; }
+    .date-chip span { display: block; color: var(--muted); font-size: 11px; margin-top: 5px; }
+    .slot-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .slot { font-weight: 800; min-width: 82px; }
+    .slot small { display: block; font-weight: 400; font-size: 9px; color: #5e642d; margin-top: 3px; }
+    .empty { border: 1px dashed #aaa69a; color: var(--muted); padding: 18px; font-size: 13px; }
+    .booking-form, .panel, .admin-card { background: var(--card); border: 1px solid var(--line); padding: 20px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label { font-size: 11px; text-transform: uppercase; color: var(--muted); }
+    .field input, .field select { background: white; border: 1px solid var(--line); padding: 12px; min-width: 0; color: var(--ink); }
+    .field.full { grid-column: 1 / -1; }
+    .note { color: var(--muted); font-size: 11px; margin: 12px 0 0; }
+    .primary, .secondary, .danger { border: 1px solid var(--ink); padding: 12px 15px; text-transform: uppercase; font-weight: 800; font-size: 11px; background: var(--ink); color: var(--paper); }
+    .primary { background: var(--acid); color: var(--ink); }
+    .primary:hover { background: #c8e653; }
+    .secondary { background: transparent; color: var(--ink); }
+    .danger { background: var(--warn); color: var(--ink); }
+    .button-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .summary-line { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 14px; font-size: 12px; display: flex; justify-content: space-between; gap: 14px; }
+    .summary-line strong { text-align: right; }
+    .callout { padding: 12px 14px; background: #eeeddf; font-size: 12px; line-height: 1.5; }
+    .callout.warn { background: var(--warn); }
+    .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .admin-card { margin-bottom: 15px; }
+    .admin-list { display: flex; flex-direction: column; gap: 9px; }
+    .list-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 11px; font-size: 12px; }
+    .list-row:first-child { border-top: 0; padding-top: 0; }
+    .list-row small { display: block; color: var(--muted); margin-top: 4px; }
+    .mini { padding: 7px 9px; font-size: 10px; }
+    .request { border-left: 3px solid #d78a63; padding-left: 11px; }
+    .request-actions { display: flex; gap: 6px; margin-top: 9px; }
+    .confirmation { max-width: 640px; margin: 0 auto; }
+    .big-code { background: var(--acid); padding: 14px 17px; display: inline-block; font-weight: 900; font-size: 20px; letter-spacing: .06em; margin: 10px 0; }
+    .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); padding: 12px 16px; background: var(--ink); color: white; font-size: 12px; display: none; max-width: calc(100% - 32px); z-index: 2; }
+    .toast.show { display: block; }
+    footer { background: var(--ink); color: #b7b4aa; padding: 22px; text-align: center; font-size: 10px; }
+    @media (max-width: 650px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      main { margin-top: 32px; }
+      .page-head { align-items: flex-start; flex-direction: column; }
+      .service-grid, .admin-grid { grid-template-columns: 1fr; }
+      .service-card { min-height: 80px; }
+      .service-duration { margin-top: 10px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">BARBER <span>/</span> BOOKING</div>
+    <nav aria-label="Hlavná navigácia">
+      <button class="nav-btn active" data-page="book">Rezervovať</button>
+      <button class="nav-btn" data-page="manage">Môj termín</button>
+      <button class="nav-btn" data-page="admin">Správa</button>
+    </nav>
+  </header>
+  <main id="app"></main>
+  <div id="toast" class="toast" role="status"></div>
+  <footer>REZERVAČNÝ PROTOTYP · OTVÁRACIE DNI A TERMÍNY SPRAVUJE BARBER</footer>
+  <script>
+    const KEY = 'barber-booking-prototype-v1';
+    const SERVICES = {
+      cut: { name: 'Strih', duration: 60 },
+      combo: { name: 'Strih + brada', duration: 90 },
+      beard: { name: 'Brada', duration: 30 }
+    };
+    const blankState = () => ({ days: [], bookings: [], requests: [] });
+    let state;
+    try { state = JSON.parse(localStorage.getItem(KEY)) || blankState(); }
+    catch { state = blankState(); }
+    let page = 'book';
+    let service = 'cut';
+    let selectedDate = '';
+    let selectedSlot = null;
+    let manageId = '';
+    let manageMode = '';
+    let adminDate = '';
+    let toastTimer;
+
+    const app = document.getElementById('app');
+    const today = () => dateKey(new Date());
+    function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+    function dateKey(date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
+    function dateObj(key) { const [y,m,d] = key.split('-').map(Number); return new Date(y,m-1,d,12); }
+    function formatDate(key, opts = { weekday:'long', day:'numeric', month:'long' }) { return new Intl.DateTimeFormat('sk-SK', opts).format(dateObj(key)); }
+    function addDays(key, amount) { const d = dateObj(key); d.setDate(d.getDate()+amount); return dateKey(d); }
+    function mins(time) { const [h,m] = time.split(':').map(Number); return h*60+m; }
+    function clock(value) { return `${String(Math.floor(value/60)).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`; }
+    function nowMinutesIfToday(key) { const n = new Date(); return key === today() ? n.getHours()*60+n.getMinutes() : -1; }
+    function stamp(key, time) { const [y,m,d] = key.split('-').map(Number); const [h,min] = time.split(':').map(Number); return new Date(y,m-1,d,h,min).getTime(); }
+    function isWithin24h(booking) { return stamp(booking.date, booking.time) - Date.now() < 24*60*60*1000; }
+    function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function dayFor(key) { return state.days.find(d => d.date === key); }
+    function activeBookings(key, excludeId='') { return state.bookings.filter(b => b.status === 'active' && b.date === key && b.id !== excludeId); }
+    function bookingEnd(b) { return mins(b.time) + SERVICES[b.service].duration; }
+    function getSlots(key, serviceKey, excludeId='') {
+      const day = dayFor(key); if (!day) return [];
+      const duration = SERVICES[serviceKey].duration;
+      const open = mins(day.opens), lastStart = mins(day.closes);
+      const bookings = activeBookings(key, excludeId);
+      const times = new Set();
+      // Hourly starts are the normal rhythm. Half-hour starts are added only when they touch an existing booking.
+      for (let t = Math.ceil(open/60)*60; t <= lastStart; t += 60) times.add(t);
+      for (const b of bookings) {
+        const end = bookingEnd(b);
+        const touching = [end, mins(b.time)-duration];
+        for (const t of touching) if (t % 60 === 30 && t <= lastStart) times.add(t);
+      }
+      const nowMins = nowMinutesIfToday(key);
+      const choices = [];
+      for (const t of times) {
+        if (t < open || t > lastStart || (nowMins >= 0 && t <= nowMins)) continue;
+        const overlaps = bookings.some(b => t < bookingEnd(b) && t + duration > mins(b.time));
+        if (overlaps) continue;
+        choices.push({ time:clock(t), minute:t });
+      }
+      return choices.sort((a,b) => a.minute-b.minute);
+    }
+    function notify(text) {
+      const el = document.getElementById('toast'); el.textContent = text; el.classList.add('show');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+    }
+    function setPage(next) {
+      page = next; selectedSlot = null; manageMode = '';
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === next));
+      render(); window.scrollTo(0,0);
+    }
+    function openDaysMarkup(active='') {
+      const days = state.days.filter(d => d.date >= today()).sort((a,b)=>a.date.localeCompare(b.date));
+      if (!days.length) return '<div class="empty">Zatiaľ nie sú otvorené žiadne dni. Barber pridá dostupné dni v časti Správa.</div>';
+      return `<div class="date-list">${days.map(d=>`<button class="date-chip ${active===d.date?'selected':''}" data-date="${d.date}"><strong>${esc(formatDate(d.date,{weekday:'short',day:'numeric',month:'short'}))}</strong><span>${d.opens}–${d.closes}</span></button>`).join('')}</div>`;
+    }
+    function slotsMarkup(key, serviceKey, excludeId='') {
+      if (!key) return '<div class="empty">Najprv vyberte deň.</div>';
+      const slots = getSlots(key, serviceKey, excludeId);
+      if (!slots.length) return '<div class="empty">Na tento deň už nie sú voľné termíny pre vybranú službu.</div>';
+      return `<div class="slot-list">${slots.map(s=>`<button class="slot ${selectedSlot===s.time?'selected':''}" data-slot="${s.time}">${s.time}</button>`).join('')}</div>`;
+    }
+    function serviceCards(active) {
+      return `<div class="service-grid">${Object.entries(SERVICES).map(([id,s])=>`<button class="service-card ${active===id?'selected':''}" data-service="${id}"><span class="service-name">${s.name}</span><span class="service-duration">${s.duration===90?'1 h 30 min':s.duration===60?'1 hodina':'30 min'}</span></button>`).join('')}</div>`;
+    }
+    function renderBook() {
+      const chosen = selectedSlot && selectedDate ? `${formatDate(selectedDate)} · ${selectedSlot}` : 'Vyberte deň a čas';
+      app.innerHTML = `<div class="page-head"><div><div class="eyebrow">Rezervácia termínu</div><h1>Vyber si<br>čas.</h1></div><p class="lede">Vyberte službu, deň a voľný termín. Dostupné dni otvára barber podľa svojho rozvrhu.</p></div>
+        <section class="section"><div class="section-title"><h2>01 / Služba</h2></div>${serviceCards(service)}</section>
+        <section class="section"><div class="section-title"><h2>02 / Dostupný deň</h2></div><div id="days">${openDaysMarkup(selectedDate)}</div></section>
+        ${selectedDate?`<section class="section"><div class="section-title"><h2>03 / Voľný čas</h2><span class="label">${esc(formatDate(selectedDate))}</span></div><div id="slots">${slotsMarkup(selectedDate,service)}</div></section>`:''}
+        <section class="section booking-form"><div class="section-title"><h2>04 / Vaše údaje</h2></div><div class="summary-line"><span>Vybraný termín</span><strong>${esc(chosen)}</strong></div><form id="booking-form"><div class="form-grid" style="margin-top:16px"><div class="field"><label for="name">Meno</label><input id="name" name="name" autocomplete="name" required maxlength="80"></div><div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email"></div><div class="field"><label for="phone">Telefón</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div></div><p class="note">Vyplňte e-mail alebo telefón. V tomto prototype sa rezervácia uloží v tomto prehliadači; odoslanie e-mailu/SMS vyžaduje napojenie služby.</p><div class="button-row"><button class="primary" type="submit">Potvrdiť rezerváciu ↗</button></div></form></section>
+        `;
+      app.querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>{service=b.dataset.service;selectedSlot=null;render();});
+      app.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{selectedDate=b.dataset.date;selectedSlot=null;render();});
+      app.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{selectedSlot=b.dataset.slot;render();});
+      app.querySelector('#booking-form').onsubmit=e=>{
+        e.preventDefault(); const form=new FormData(e.currentTarget);
+        const name=String(form.get('name')).trim(), email=String(form.get('email')).trim(), phone=String(form.get('phone')).trim();
+        if (!email&&!phone) return notify('Zadajte e-mail alebo telefón.');
+        if (!selectedDate||!selectedSlot) return notify('Vyberte si deň a voľný čas.');
+        if (!getSlots(selectedDate,service).some(s=>s.time===selectedSlot)) return notify('Tento čas už nie je voľný. Vyberte iný.');
+        const id='BB-'+Math.random().toString(36).slice(2,6).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+        const booking={id,name,email,phone,service,date:selectedDate,time:selectedSlot,status:'active',createdAt:Date.now(),reminderAt:stamp(selectedDate,selectedSlot)-24*60*60*1000};
+        state.bookings.push(booking);save();renderConfirmation(booking);notify('Rezervácia je uložená.');
+      };
+    }
+    function renderConfirmation(b) {
+      page='confirmation'; document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
+      app.innerHTML=`<div class="confirmation panel"><div class="eyebrow">Rezervácia uložená v prototype</div><h1 style="font-size:48px">Vidíme sa.</h1><div class="big-code">${esc(b.id)}</div><p class="lede">Uschovajte si tento kód. Nájdete ho v časti „Môj termín“, kde môžete rezerváciu spravovať.</p><div class="summary-line"><span>Služba</span><strong>${esc(SERVICES[b.service].name)} · ${SERVICES[b.service].duration} min</strong></div><div class="summary-line"><span>Dátum a čas</span><strong>${esc(formatDate(b.date))} · ${b.time}</strong></div><div class="summary-line"><span>Meno</span><strong>${esc(b.name)}</strong></div><div class="callout" style="margin-top:18px">Potvrdenie sa zatiaľ zobrazuje priamo na stránke. Automatické e-mailové/SMS potvrdenie a pripomienka 24 hodín pred termínom budú fungovať po napojení odosielacej služby a servera.</div><div class="button-row"><button class="primary" id="to-manage">Spravovať rezerváciu</button><button class="secondary" id="to-book">Späť na rezervácie</button></div></div>`;
+      document.getElementById('to-manage').onclick=()=>{manageId=b.id;setPage('manage');};
+      document.getElementById('to-book').onclick=()=>setPage('book');
+    }
+    function findBooking(id) { return state.bookings.find(b=>b.id.toLowerCase()===id.trim().toLowerCase()); }
+    function renderManage() {
+      const booking=manageId?findBooking(manageId):null;
+      if (!booking) {
+        app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Úprava rezervácie</div><h1>Môj<br>termín.</h1></div><p class="lede">Zadajte kód rezervácie z potvrdenia.</p></div><section class="panel"><form id="lookup" class="form-grid"><div class="field"><label for="code">Kód rezervácie</label><input id="code" required placeholder="BB-XXXX-XXXX" value="${esc(manageId)}"></div><div class="field" style="justify-content:end"><button class="primary" type="submit">Nájsť rezerváciu</button></div></form></section>`;
+        app.querySelector('#lookup').onsubmit=e=>{e.preventDefault();const id=new FormData(e.currentTarget).get('code');if(findBooking(id)){manageId=id;render();}else notify('Rezerváciu s týmto kódom sa nepodarilo nájsť.');}; return;
+      }
+      if (booking.status!=='active') { app.innerHTML=`<div class="panel"><div class="eyebrow">Rezervácia ${esc(booking.id)}</div><h1 style="font-size:42px">Termín je zrušený.</h1><button class="secondary" id="again">Nová rezervácia</button></div>`;app.querySelector('#again').onclick=()=>setPage('book');return; }
+      if (manageMode==='change') {
+        app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Úprava ${esc(booking.id)}</div><h1>Zmeniť<br>termín.</h1></div><p class="lede">${isWithin24h(booking)?'Do pôvodného termínu zostáva menej ako 24 hodín. Žiadosť príde barberovi na schválenie.':'Zmenu môžete vykonať priamo, ak do termínu zostáva aspoň 24 hodín.'}</p></div><section class="section"><div class="section-title"><h2>Nová služba</h2></div>${serviceCards(service)}</section><section class="section"><div class="section-title"><h2>Nový deň</h2></div>${openDaysMarkup(selectedDate)}</section>${selectedDate?`<section class="section"><div class="section-title"><h2>Nový čas</h2></div>${slotsMarkup(selectedDate,service,booking.id)}</section>`:''}<div class="button-row"><button class="primary" id="save-change">${isWithin24h(booking)?'Odoslať žiadosť':'Uložiť zmenu'}</button><button class="secondary" id="back-manage">Späť</button></div>`;
+        app.querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>{service=b.dataset.service;selectedSlot=null;render();});
+        app.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{selectedDate=b.dataset.date;selectedSlot=null;render();});
+        app.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{selectedSlot=b.dataset.slot;render();});
+        app.querySelector('#back-manage').onclick=()=>{manageMode='';render();};
+        app.querySelector('#save-change').onclick=()=>{
+          if(!selectedDate||!selectedSlot)return notify('Vyberte nový deň a čas.');
+          if(!getSlots(selectedDate,service,booking.id).some(s=>s.time===selectedSlot))return notify('Vybraný čas už nie je voľný.');
+          if(isWithin24h(booking)){state.requests.push({id:crypto.randomUUID(),type:'change',bookingId:booking.id,service,date:selectedDate,time:selectedSlot,createdAt:Date.now(),status:'pending'});save();manageMode='';render();notify('Žiadosť o zmenu bola odoslaná barberovi.');}
+          else{booking.service=service;booking.date=selectedDate;booking.time=selectedSlot;booking.reminderAt=stamp(selectedDate,selectedSlot)-86400000;save();manageMode='';render();notify('Rezervácia bola zmenená.');}
+        }; return;
+      }
+      const pending=state.requests.find(r=>r.bookingId===booking.id&&r.status==='pending');
+      app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Správa rezervácie</div><h1>Môj<br>termín.</h1></div><p class="lede">Kód: <strong>${esc(booking.id)}</strong></p></div><section class="panel"><h2>${esc(SERVICES[booking.service].name)}</h2><div class="summary-line"><span>Dátum a čas</span><strong>${esc(formatDate(booking.date))} · ${booking.time}</strong></div><div class="summary-line"><span>Dĺžka</span><strong>${SERVICES[booking.service].duration} min</strong></div>${pending?'<div class="callout warn" style="margin-top:16px">Vaša žiadosť čaká na potvrdenie barbera. Pôvodný termín zatiaľ zostáva rezervovaný.</div>':''}<div class="button-row"><button class="primary" id="change">Zmeniť termín</button><button class="danger" id="cancel">Požiadať o zrušenie</button></div><p class="note">Viac ako 24 hodín pred termínom môžete zmenu alebo zrušenie vykonať priamo. V posledných 24 hodinách ide barberovi žiadosť na schválenie.</p></section>`;
+      app.querySelector('#change').onclick=()=>{manageMode='change';service=booking.service;selectedDate=booking.date;selectedSlot=null;render();};
+      app.querySelector('#cancel').onclick=()=>{
+        if(isWithin24h(booking)){if(pending)return notify('Žiadosť už čaká na spracovanie.');state.requests.push({id:crypto.randomUUID(),type:'cancel',bookingId:booking.id,createdAt:Date.now(),status:'pending'});save();render();notify('Žiadosť o zrušenie bola odoslaná barberovi.');}
+        else{booking.status='cancelled';booking.cancelledAt=Date.now();save();render();notify('Termín bol zrušený.');}
+      };
+    }
+    function timeOptions(value) { return Array.from({length:25},(_,i)=>`${String(Math.floor(i/1)+6).padStart(2,'0')}:00`).filter(t=>mins(t)>=360&&mins(t)<=1140).map(t=>`<option ${t===value?'selected':''} value="${t}">${t}</option>`).join(''); }
+    function renderAdmin() {
+      const active=[...state.bookings].filter(b=>b.status==='active').sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+      const openDays=[...state.days].sort((a,b)=>a.date.localeCompare(b.date));
+      const pending=state.requests.filter(r=>r.status==='pending');
+      const chosenDay=adminDate&&dayFor(adminDate)?dayFor(adminDate):null;
+      app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Barber / administrácia</div><h1>Otváram<br>kalendár.</h1></div><p class="lede">Pridajte deň, v ktorom striháte. Rezervácie a zmeny sa ukladajú lokálne v tomto prehliadači.</p></div><div class="callout warn" style="margin-bottom:20px">Prototyp nemá prihlásenie ani zdieľanú databázu. Verejnú prevádzku treba napojiť na zabezpečený server, aby barber a klienti videli ten istý kalendár.</div><div class="admin-grid"><section class="admin-card"><div class="section-title"><h2>Otvoriť deň</h2><span class="label">Príklad: 08:00–19:00</span></div><form id="day-form"><div class="form-grid"><div class="field full"><label for="day-date">Dátum</label><input id="day-date" name="date" type="date" min="${today()}" required value="${esc(adminDate||'')}"></div><div class="field"><label for="opens">Prvý začiatok</label><select id="opens" name="opens">${timeOptions(chosenDay?.opens||'08:00')}</select></div><div class="field"><label for="closes">Posledný začiatok</label><select id="closes" name="closes">${timeOptions(chosenDay?.closes||'19:00')}</select></div></div><div class="button-row"><button class="primary" type="submit">${chosenDay?'Uložiť hodiny':'Otvoriť dátum'}</button></div></form><p class="note">Posledný termín sa môže skončiť po zadanom čase. Rezervácie sa nesmú prekrývať.</p></section><section class="admin-card"><div class="section-title"><h2>Čakajúce žiadosti</h2><span class="label">${pending.length} čaká</span></div>${pending.length?`<div class="admin-list">${pending.map(r=>{const b=findBooking(r.bookingId);return `<div class="list-row request"><div><strong>${r.type==='cancel'?'Zrušenie':'Zmena'} · ${esc(b?.name||'Klient')}</strong><small>${esc(b?.id||r.bookingId)} · ${r.type==='change'?`${esc(formatDate(r.date))} ${r.time} / ${esc(SERVICES[r.service].name)}`:`pôvodne ${esc(formatDate(b?.date||today()))} ${b?.time||''}`}</small><div class="request-actions"><button class="primary mini" data-approve="${r.id}">Schváliť</button><button class="secondary mini" data-decline="${r.id}">Zamietnuť</button></div></div></div>`}).join('')}</div>`:'<div class="empty">Žiadne čakajúce žiadosti.</div>'}</section></div><div class="admin-grid"><section class="admin-card"><div class="section-title"><h2>Otvorené dni</h2><span class="label">${openDays.length} dní</span></div>${openDays.length?`<div class="admin-list">${openDays.map(d=>{const count=activeBookings(d.date).length;return `<div class="list-row"><div><strong>${esc(formatDate(d.date))}</strong><small>${d.opens}–${d.closes} posledné začiatky · ${count} rezervácií</small></div><button class="secondary mini" data-select-day="${d.date}">Upraviť</button><button class="danger mini" data-close-day="${d.date}" ${count?'disabled title="Najprv zrušte alebo presuňte rezervácie"':''}>Zavrieť</button></div>`}).join('')}</div>`:'<div class="empty">Kalendár je zatiaľ prázdny.</div>'}</section><section class="admin-card"><div class="section-title"><h2>Rezervácie</h2><span class="label">${active.length} aktívnych</span></div>${active.length?`<div class="admin-list">${active.map(b=>`<div class="list-row"><div><strong>${b.time} · ${esc(b.name)}</strong><small>${esc(formatDate(b.date))} · ${esc(SERVICES[b.service].name)} (${SERVICES[b.service].duration} min)<br>${esc(b.email||b.phone||'')}</small></div><span class="label">24 h pripomienka*</span></div>`).join('')}</div>`:'<div class="empty">Zatiaľ bez rezervácií.</div>'}<p class="note">* Čas pripomienky sa vypočíta, ale jej odoslanie vyžaduje server a e-mail/SMS službu.</p></section></div><div class="callout">Po schválení žiadosti sa zmena prejaví v kalendári. V prototype sa klientovi neodosiela e-mail; do produkcie treba pridať notifikácie pre oboch.</div>`;
+      app.querySelector('#day-date').onchange=e=>{adminDate=e.target.value;render();};
+      app.querySelector('#day-form').onsubmit=e=>{e.preventDefault();const f=new FormData(e.currentTarget),date=f.get('date'),opens=f.get('opens'),closes=f.get('closes');if(mins(closes)<mins(opens))return notify('Posledný začiatok musí byť po prvom začiatku.');const existing=activeBookings(date);if(existing.some(b=>mins(b.time)<mins(opens)||mins(b.time)>mins(closes)))return notify('Nové rozmedzie by vylúčilo už rezervovaný začiatok.');const day=dayFor(date);if(day){day.opens=opens;day.closes=closes;}else state.days.push({date,opens,closes});adminDate=date;save();render();notify('Dostupnosť dňa je uložená.');};
+      app.querySelectorAll('[data-select-day]').forEach(b=>b.onclick=()=>{adminDate=b.dataset.selectDay;render();window.scrollTo(0,0);});
+      app.querySelectorAll('[data-close-day]').forEach(b=>b.onclick=()=>{const d=b.dataset.closeDay;if(activeBookings(d).length)return notify('Najprv spracujte rezervácie v daný deň.');state.days=state.days.filter(x=>x.date!==d);if(adminDate===d)adminDate='';save();render();notify('Deň bol zatvorený.');});
+      app.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>resolveRequest(b.dataset.approve,true));
+      app.querySelectorAll('[data-decline]').forEach(b=>b.onclick=()=>resolveRequest(b.dataset.decline,false));
+    }
+    function resolveRequest(id, approve) {
+      const request=state.requests.find(r=>r.id===id&&r.status==='pending');if(!request)return;
+      const booking=findBooking(request.bookingId);
+      if(approve&&booking){
+        if(request.type==='cancel'){booking.status='cancelled';booking.cancelledAt=Date.now();}
+        else if(!getSlots(request.date,request.service,booking.id).some(s=>s.time===request.time))return notify('Požadovaný čas už nie je dostupný. Žiadosť zamietnite alebo kontaktujte klienta.');
+        else{booking.date=request.date;booking.time=request.time;booking.service=request.service;booking.reminderAt=stamp(request.date,request.time)-86400000;}
+      }
+      request.status=approve?'approved':'declined';request.resolvedAt=Date.now();save();render();notify(approve?'Žiadosť bola schválená.':'Žiadosť bola zamietnutá.');
+    }
+    function render() {
+      if(page==='book') renderBook(); else if(page==='manage') renderManage(); else if(page==='admin') renderAdmin();
+    }
+    document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
+    render();
+  </script>
+</body>
+</html>

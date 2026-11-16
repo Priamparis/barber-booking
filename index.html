@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171714">
+  <title>Rezervácie — barber</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">BARBER <span>/</span> BOOKING</div>
+    <nav aria-label="Hlavná navigácia">
+      <button class="nav-btn active" data-page="book">Rezervovať</button>
+      <button class="nav-btn" data-page="manage">Môj termín</button>
+      <button class="nav-btn" data-page="admin">Správa</button>
+    </nav>
+  </header>
+  <main id="app" aria-live="polite"></main>
+  <div id="toast" class="toast" role="status"></div>
+  <footer>REZERVAČNÝ SYSTÉM · OTVÁRACIE DNI A TERMÍNY SPRAVUJE BARBER</footer>
+  <script src="config.js"></script>
+  <script type="module">
+    const SERVICES = {
+      cut: { name: 'Strih', duration: 60 },
+      combo: { name: 'Strih + brada', duration: 90 },
+      beard: { name: 'Brada', duration: 30 }
+    };
+    const cfg = window.BARBER_CONFIG || {};
+    const configured = /^https:\/\//.test(cfg.supabaseUrl || '') && /^https:\/\//.test(cfg.siteUrl || '') && !!cfg.publicKey;
+    const app = document.getElementById('app');
+    let page = new URLSearchParams(location.hash.slice(1)).has('manage') ? 'manage' : 'book';
+    let service = 'cut', selectedDate = '', selectedSlot = '', manageMode = '', manageToken = '';
+    let adminDate = '', toastTimer;
+
+    function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function dateObj(key) { const [y,m,d] = key.split('-').map(Number); return new Date(Date.UTC(y,m-1,d,12)); }
+    function formatDate(key, opts={weekday:'long',day:'numeric',month:'long'}) { return new Intl.DateTimeFormat('sk-SK',{...opts,timeZone:'Europe/Bratislava'}).format(dateObj(key)); }
+    function minute(value) { const [h,m] = String(value).slice(0,5).split(':').map(Number); return h*60+m; }
+    function clock(value) { return `${String(Math.floor(value/60)).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`; }
+    function todayKey() {
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Bratislava',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(x=>[x.type,x.value]));
+      return `${p.year}-${p.month}-${p.day}`;
+    }
+    function localMinute() {
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Bratislava',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(x=>[x.type,x.value]));
+      return Number(p.hour)*60+Number(p.minute);
+    }
+    async function api(action, body={}, auth=false) {
+      if (!configured) throw new Error('Najprv treba nastaviť Supabase v súbore config.js.');
+      const headers = {'Content-Type':'application/json','apikey':cfg.publicKey};
+      if (auth) {
+        const token = await validAccessToken();
+        if (!token) throw new Error('Prihláste sa do administrácie.');
+        headers.Authorization = `Bearer ${token}`;
+      }
+      const response = await fetch(`${cfg.supabaseUrl.replace(/\/$/,'')}/functions/v1/booking-api`,{
+        method:'POST',headers,body:JSON.stringify({action,...body})
+      });
+      const result = await response.json().catch(()=>({error:'Server vrátil neplatnú odpoveď.'}));
+      if (!response.ok) throw new Error(result.error || 'Požiadavku sa nepodarilo spracovať.');
+      return result;
+    }
+    function storedSession() { try { return JSON.parse(sessionStorage.getItem('bb-admin-session')||'null'); } catch { return null; } }
+    function setSession(value) { sessionStorage.setItem('bb-admin-session',JSON.stringify(value)); }
+    function clearSession() { sessionStorage.removeItem('bb-admin-session'); }
+    async function validAccessToken() {
+      const session=storedSession(); if(!session) return '';
+      if(session.expires_at>Date.now()+60000) return session.access_token;
+      if(!session.refresh_token) { clearSession(); return ''; }
+      const response=await fetch(`${cfg.supabaseUrl.replace(/\/$/,'')}/auth/v1/token?grant_type=refresh_token`,{
+        method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.publicKey},body:JSON.stringify({refresh_token:session.refresh_token})
+      });
+      const value=await response.json().catch(()=>null);
+      if(!response.ok||!value?.access_token) { clearSession(); return ''; }
+      setSession({access_token:value.access_token,refresh_token:value.refresh_token,expires_at:Date.now()+value.expires_in*1000});
+      return value.access_token;
+    }
+    function toast(text) { const el=document.getElementById('toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
+    function setPage(next) {
+      page=next;manageMode='';selectedSlot='';
+      if(next==='manage') manageToken=new URLSearchParams(location.hash.slice(1)).get('manage')||sessionStorage.getItem('bb-manage-token')||'';
+      document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===next));
+      render();window.scrollTo(0,0);
+    }
+    function serviceCards(active) { return `<div class="service-grid">${Object.entries(SERVICES).map(([id,s])=>`<button class="service-card ${active===id?'selected':''}" data-service="${id}"><span class="service-name">${s.name}</span><span class="service-duration">${s.duration===90?'1 h 30 min':s.duration===60?'1 hodina':'30 min'}</span></button>`).join('')}</div>`; }
+    function daysMarkup(days,active='') {
+      if(!days.length)return '<div class="empty">Momentálne nie sú otvorené žiadne dni. Dostupnosť dopĺňa barber.</div>';
+      return `<div class="date-list">${days.map(d=>`<button class="date-chip ${active===d.date?'selected':''}" data-date="${d.date}"><strong>${esc(formatDate(d.date,{weekday:'short',day:'numeric',month:'short'}))}</strong><span>${esc(d.opens)}–${esc(d.lastStart)}</span></button>`).join('')}</div>`;
+    }
+    function slotsMarkup(slots,active='') {
+      if(!slots.length)return '<div class="empty">Na tento deň už nie sú voľné termíny pre vybranú službu.</div>';
+      return `<div class="slot-list">${slots.map(t=>`<button class="slot ${active===t?'selected':''}" data-slot="${t}">${esc(t)}</button>`).join('')}</div>`;
+    }
+    async function getDays() { const r=await api('days');return r.days||[]; }
+    function header(eyebrow,title,lede) { return `<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><p class="lede">${lede}</p></div>`; }
+    function setupPage() {
+      app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Technické nastavenie</div><h1>Čakám na<br>Supabase.</h1></div><p class="lede">Stránka je pripravená na GitHub Pages. Pred zapnutím rezervácií treba vytvoriť Supabase projekt a vložiť jeho URL a verejný kľúč do <strong>config.js</strong>.</p></div><div class="callout warn">Zákazníci tu zatiaľ nemôžu rezervovať. Táto ochrana zabraňuje tomu, aby sa verejne tvárila funkčná stránka bez databázy.</div>`;
+    }
+    async function renderBook() {
+      const days=await getDays();
+      const chosen=selectedDate&&selectedSlot?`${formatDate(selectedDate)} · ${selectedSlot}`:'Vyberte deň a čas';
+      app.innerHTML=`${header('Rezervácia termínu','Vyber si<br>čas.','Vyberte službu, deň a voľný termín.')}
+        <section class="section"><div class="section-title"><h2>01 / Služba</h2></div>${serviceCards(service)}</section>
+        <section class="section"><div class="section-title"><h2>02 / Dostupný deň</h2></div>${daysMarkup(days,selectedDate)}</section>
+        ${selectedDate?`<section class="section"><div class="section-title"><h2>03 / Voľný čas</h2><span class="label">${esc(formatDate(selectedDate))}</span></div><div id="slot-area"><div class="empty">Načítavam voľné časy…</div></div></section>`:''}
+        <section class="section booking-form"><div class="section-title"><h2>04 / Vaše údaje</h2></div><div class="summary-line"><span>Vybraný termín</span><strong>${esc(chosen)}</strong></div><form id="booking-form"><div class="form-grid" style="margin-top:16px"><div class="field"><label for="name">Meno</label><input id="name" name="name" autocomplete="name" required maxlength="80"></div><div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email"></div><div class="field"><label for="phone">Telefón</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div></div><p class="note">Vyplňte e-mail alebo telefón. Potvrdenie a pripomienku pošleme na zvolený kontakt.</p><div class="button-row"><button class="primary" type="submit">Potvrdiť rezerváciu ↗</button></div></form></section>`;
+      if(selectedDate) {
+        const slotArea=app.querySelector('#slot-area');
+        try { const r=await api('slots',{date:selectedDate,service});slotArea.innerHTML=slotsMarkup(r.slots||[],selectedSlot); }
+        catch(error) { slotArea.innerHTML=`<div class="empty">${esc(error.message)}</div>`; }
+      }
+      app.querySelector('#booking-form').onsubmit=async e=>{
+        e.preventDefault();const form=new FormData(e.currentTarget);
+        const email=String(form.get('email')||'').trim(),phone=String(form.get('phone')||'').trim();
+        if(!email&&!phone)return toast('Zadajte e-mail alebo telefón.');
+        if(!selectedDate||!selectedSlot)return toast('Vyberte si deň a voľný čas.');
+        const button=e.currentTarget.querySelector('button[type=submit]');button.disabled=true;button.textContent='Ukladám…';
+        try {
+          const receipt=await api('create',{name:String(form.get('name')).trim(),email,phone,service,date:selectedDate,time:selectedSlot});
+          manageToken=receipt.token;sessionStorage.setItem('bb-manage-token',manageToken);
+          const u=new URL(location.href);u.hash=`manage=${manageToken}`;history.replaceState({},'',u);
+          renderConfirmation(receipt);
+        } catch(error) { button.disabled=false;button.textContent='Potvrdiť rezerváciu ↗';toast(error.message); }
+      };
+    }
+    function renderConfirmation(b) {
+      page='confirmation';document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
+      const siteBase=(cfg.siteUrl||`${location.origin}${location.pathname}`).replace(/\/$/,'/');
+      const link=`${siteBase}#manage=${encodeURIComponent(b.token)}`;
+      app.innerHTML=`<div class="confirmation panel"><div class="eyebrow">Rezervácia prijatá</div><h1 style="font-size:48px">Vidíme sa.</h1><div class="big-code">${esc(b.reference)}</div><p class="lede">Potvrdenie a pripomienku pošleme na zadaný kontakt. Odkaz nižšie si uschovajte na prípadnú zmenu alebo zrušenie rezervácie.</p><div class="summary-line"><span>Služba</span><strong>${esc(SERVICES[b.service].name)} · ${b.duration} min</strong></div><div class="summary-line"><span>Dátum a čas</span><strong>${esc(formatDate(b.date))} · ${esc(b.time)}</strong></div><div class="field" style="margin-top:16px"><label for="manage-link">Súkromný odkaz na správu termínu</label><input id="manage-link" readonly value="${esc(link)}"></div><div class="button-row"><button class="primary" id="copy-link">Kopírovať odkaz</button><button class="secondary" id="open-manage">Spravovať termín</button><button class="secondary" id="back-book">Nová rezervácia</button></div></div>`;
+      app.querySelector('#copy-link').onclick=async()=>{try{await navigator.clipboard.writeText(link);toast('Odkaz bol skopírovaný.');}catch{app.querySelector('#manage-link').select();toast('Odkaz označený na skopírovanie.');}};
+      app.querySelector('#open-manage').onclick=()=>setPage('manage');
+      app.querySelector('#back-book').onclick=()=>{selectedDate='';selectedSlot='';setPage('book');};
+    }
+    async function renderManage() {
+      manageToken=new URLSearchParams(location.hash.slice(1)).get('manage')||manageToken||sessionStorage.getItem('bb-manage-token')||'';
+      if(!manageToken) {
+        app.innerHTML=`${header('Úprava rezervácie','Môj<br>termín.','Na správu termínu otvorte súkromný odkaz z potvrdzovacej správy alebo potvrdenia po rezervácii.')}<div class="empty">Bez súkromného odkazu nemôžeme bezpečne zobraziť ani zmeniť rezerváciu. Ak ste odkaz stratili, kontaktujte barber shop.</div>`;return;
+      }
+      const result=await api('manage_details',{token:manageToken});const b=result.booking;
+      if(b.status!=='confirmed') { app.innerHTML=`<div class="panel"><div class="eyebrow">${esc(b.booking_reference)}</div><h1 style="font-size:42px">Termín je zrušený.</h1><button class="secondary" id="again">Nová rezervácia</button></div>`;app.querySelector('#again').onclick=()=>{selectedDate='';setPage('book');};return; }
+      if(manageMode==='change') {
+        const days=await getDays();
+        app.innerHTML=`${header(`Úprava ${esc(b.booking_reference)}`,'Zmeniť<br>termín.', 'Viac než 24 hodín pred termínom môžete zmenu vykonať priamo. V posledných 24 hodinách ju schvaľuje barber.')}
+          <section class="section"><div class="section-title"><h2>Nová služba</h2></div>${serviceCards(service)}</section>
+          <section class="section"><div class="section-title"><h2>Nový deň</h2></div>${daysMarkup(days,selectedDate)}</section>
+          ${selectedDate?`<section class="section"><div class="section-title"><h2>Nový čas</h2></div><div id="slot-area"><div class="empty">Načítavam voľné časy…</div></div></section>`:''}
+          <div class="button-row"><button class="primary" id="save-change">Odoslať zmenu</button><button class="secondary" id="back-manage">Späť</button></div>`;
+        if(selectedDate){const slotArea=app.querySelector('#slot-area');try{const r=await api('slots',{date:selectedDate,service,excludeId:b.appointment_id});slotArea.innerHTML=slotsMarkup(r.slots||[],selectedSlot);}catch(error){slotArea.innerHTML=`<div class="empty">${esc(error.message)}</div>`;}}
+        app.querySelector('#back-manage').onclick=()=>{manageMode='';render();};
+        app.querySelector('#save-change').onclick=async()=>{
+          if(!selectedDate||!selectedSlot)return toast('Vyberte nový deň a čas.');
+          const button=app.querySelector('#save-change');button.disabled=true;
+          try{const r=await api('manage',{token:manageToken,manageAction:'reschedule',service,date:selectedDate,time:selectedSlot});manageMode='';selectedSlot='';toast(r.result==='pending'?'Žiadosť čaká na potvrdenie barbera.':'Rezervácia bola zmenená.');await render();}
+          catch(error){button.disabled=false;toast(error.message);}
+        };return;
+      }
+      app.innerHTML=`${header('Správa rezervácie','Môj<br>termín.',`Kód rezervácie: <strong>${esc(b.booking_reference)}</strong>`)}<section class="panel"><h2>${esc(SERVICES[b.service]?.name||b.service)}</h2><div class="summary-line"><span>Dátum a čas</span><strong>${esc(formatDate(b.booking_day))} · ${esc(String(b.starts_at).slice(0,5))}</strong></div><div class="summary-line"><span>Dĺžka</span><strong>${b.duration_minutes} min</strong></div>${b.pending_request?'<div class="callout warn" style="margin-top:16px">Vaša žiadosť čaká na potvrdenie barbera. Pôvodný termín zatiaľ zostáva rezervovaný.</div>':''}<div class="button-row"><button class="primary" id="change">Zmeniť termín</button><button class="danger" id="cancel">Požiadať o zrušenie</button></div><p class="note">Viac než 24 hodín pred termínom sa zmena alebo zrušenie vykoná priamo. V posledných 24 hodinách ide barberovi žiadosť na schválenie.</p></section>`;
+      app.querySelector('#change').onclick=()=>{manageMode='change';service=b.service;selectedDate=b.booking_day;selectedSlot='';render();};
+      app.querySelector('#cancel').onclick=async e=>{if(b.pending_request)return toast('Žiadosť už čaká na spracovanie.');e.currentTarget.disabled=true;try{const r=await api('manage',{token:manageToken,manageAction:'cancel'});toast(r.result==='pending'?'Žiadosť o zrušenie čaká na potvrdenie.':'Termín bol zrušený.');await render();}catch(error){e.currentTarget.disabled=false;toast(error.message);}};
+    }
+    async function login(email,password) {
+      const response=await fetch(`${cfg.supabaseUrl.replace(/\/$/,'')}/auth/v1/token?grant_type=password`,{
+        method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.publicKey},body:JSON.stringify({email,password})
+      });
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok||!result.access_token)throw new Error(result.msg||result.message||'Prihlásenie sa nepodarilo.');
+      setSession({access_token:result.access_token,refresh_token:result.refresh_token,expires_at:Date.now()+result.expires_in*1000});
+    }
+    function timeOptions(value='08:00') { return Array.from({length:18},(_,i)=>`${String(i+6).padStart(2,'0')}:00`).map(t=>`<option value="${t}" ${t===value?'selected':''}>${t}</option>`).join(''); }
+    async function renderAdmin() {
+      if(!storedSession()) {
+        app.innerHTML=`${header('Barber / administrácia','Otváram<br>kalendár.','Prihláste sa cez účet, ktorý má administrátorské oprávnenie v Supabase.')}<section class="panel"><form id="login-form" class="form-grid"><div class="field"><label for="admin-email">E-mail</label><input id="admin-email" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="admin-password">Heslo</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required></div><div class="field full"><button class="primary" type="submit">Prihlásiť sa</button></div></form></section>`;
+        app.querySelector('#login-form').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{await login(String(f.get('email')),String(f.get('password')));render();}catch(error){toast(error.message);}};return;
+      }
+      let data;
+      try { data=await api('admin_list',{},true); }
+      catch(error) { clearSession();app.innerHTML=`${header('Barber / administrácia','Prihlásenie<br>vypršalo.','Skontrolujte účet v Supabase a oprávnenie administrátora.')}<div class="callout warn">${esc(error.message)}</div><button class="secondary" id="retry-login">Prihlásiť sa znova</button>`;app.querySelector('#retry-login').onclick=()=>render();return; }
+      const days=data.days||[], bookings=data.bookings||[], requests=(data.requests||[]).filter(r=>r.status==='pending');
+      const active=bookings.filter(b=>b.status==='confirmed').sort((a,b)=>a.booking_day.localeCompare(b.booking_day)||a.starts_at.localeCompare(b.starts_at));
+      const dayCounts=new Map();for(const b of active)dayCounts.set(b.booking_day,(dayCounts.get(b.booking_day)||0)+1);
+      const bookingFor=id=>bookings.find(b=>b.id===id);
+      const chosen=days.find(d=>d.day===adminDate);
+      app.innerHTML=`${header('Barber / administrácia','Otváram<br>kalendár.','Pridajte deň, v ktorom striháte. Posledný zadaný čas je najneskorší začiatok rezervácie.')}
+        <div class="admin-actions"><button class="secondary mini" id="logout">Odhlásiť sa</button></div>
+        <div class="admin-grid"><section class="admin-card"><div class="section-title"><h2>Otvoriť deň</h2><span class="label">Príklad: 08:00–19:00</span></div><form id="day-form"><div class="form-grid"><div class="field full"><label for="day-date">Dátum</label><input id="day-date" name="date" type="date" min="${todayKey()}" required value="${esc(adminDate)}"></div><div class="field"><label for="opens">Prvý začiatok</label><select id="opens" name="opens">${timeOptions(chosen?.first_start?.slice(0,5)||'08:00')}</select></div><div class="field"><label for="last-start">Posledný začiatok</label><select id="last-start" name="lastStart">${timeOptions(chosen?.last_start?.slice(0,5)||'19:00')}</select></div></div><div class="button-row"><button class="primary" type="submit">${chosen?'Uložiť hodiny':'Otvoriť dátum'}</button></div></form><p class="note">Služba môže skončiť po poslednom začiatku. Rezervácie sa neprekrývajú.</p></section>
+        <section class="admin-card"><div class="section-title"><h2>Čakajúce žiadosti</h2><span class="label">${requests.length} čaká</span></div>${requests.length?`<div class="admin-list">${requests.map(r=>{const b=bookingFor(r.appointment_id);return `<div class="list-row request"><div><strong>${r.action==='cancel'?'Zrušenie':'Zmena'} · ${esc(b?.customer_name||'Klient')}</strong><small>${esc(b?.reference||'')} · ${r.action==='reschedule'?`${esc(formatDate(r.new_day))} ${esc(String(r.new_start).slice(0,5))} / ${esc(SERVICES[r.new_service]?.name||'')}`:`pôvodne ${esc(formatDate(b?.booking_day||todayKey()))} ${esc(String(b?.starts_at||'').slice(0,5))}`}</small><div class="request-actions"><button class="primary mini" data-approve="${r.id}">Schváliť</button><button class="secondary mini" data-decline="${r.id}">Zamietnuť</button></div></div></div>`}).join('')}</div>`:'<div class="empty">Žiadne čakajúce žiadosti.</div>'}</section></div>
+        <div class="admin-grid"><section class="admin-card"><div class="section-title"><h2>Otvorené dni</h2><span class="label">${days.length} dní</span></div>${days.length?`<div class="admin-list">${days.map(d=>`<div class="list-row"><div><strong>${esc(formatDate(d.day))}</strong><small>${esc(d.first_start.slice(0,5))}–${esc(d.last_start.slice(0,5))} posledné začiatky · ${dayCounts.get(d.day)||0} rezervácií</small></div><button class="secondary mini" data-select-day="${d.day}">Upraviť</button><button class="danger mini" data-close-day="${d.day}" ${dayCounts.get(d.day)?'disabled title="Najprv spracujte rezervácie"':''}>Zavrieť</button></div>`).join('')}</div>`:'<div class="empty">Kalendár je zatiaľ prázdny.</div>'}</section>
+        <section class="admin-card"><div class="section-title"><h2>Rezervácie</h2><span class="label">${active.length} aktívnych</span></div>${active.length?`<div class="admin-list">${active.map(b=>`<div class="list-row"><div><strong>${esc(String(b.starts_at).slice(0,5))} · ${esc(b.customer_name)}</strong><small>${esc(formatDate(b.booking_day))} · ${esc(SERVICES[b.service]?.name||b.service)} (${b.duration_minutes} min)<br>${esc(b.email||b.phone||'')}</small></div></div>`).join('')}</div>`:'<div class="empty">Zatiaľ bez rezervácií.</div>'}</section></div>
+        <section class="admin-card"><div class="section-title"><h2>Upozornenia</h2><span class="label">Nastavenie kontaktov</span></div><form id="settings-form" class="form-grid"><div class="field"><label for="notify-email">E-mail na žiadosti od klientov</label><input id="notify-email" name="adminEmail" type="email" value="${esc(data.settings?.admin_email||'')}"></div><div class="field"><label for="admin-user-email">E-mail účtu barbera</label><input id="admin-user-email" name="adminUserEmail" type="email" required placeholder="E-mail prihláseného účtu"></div><div class="field full"><button class="primary" type="submit">Uložiť kontakty</button></div></form><p class="note">E-mail/SMS sa odošle cez nastaveného poskytovateľa. Pri telefónnom kontakte je potrebné Twilio; pri e-maile Resend.</p></section>`;
+      app.querySelector('#logout').onclick=()=>{clearSession();render();};
+      app.querySelector('#day-date').onchange=e=>{adminDate=e.target.value;render();};
+      app.querySelector('#day-form').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{await api('admin_set_day',{date:f.get('date'),opens:f.get('opens'),lastStart:f.get('lastStart')},true);adminDate=String(f.get('date'));toast('Dostupnosť dňa je uložená.');render();}catch(error){toast(error.message);}};
+      app.querySelector('#settings-form').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);try{await api('admin_settings',{adminEmail:f.get('adminEmail'),adminUserEmail:f.get('adminUserEmail')},true);toast('Kontakty sú uložené.');render();}catch(error){toast(error.message);}};
+      app.querySelectorAll('[data-select-day]').forEach(b=>b.onclick=()=>{adminDate=b.dataset.selectDay;render();window.scrollTo(0,0);});
+      app.querySelectorAll('[data-close-day]').forEach(b=>b.onclick=async()=>{try{await api('admin_close_day',{date:b.dataset.closeDay},true);toast('Deň bol zatvorený.');render();}catch(error){toast(error.message);}});
+      app.querySelectorAll('[data-approve],[data-decline]').forEach(b=>b.onclick=async()=>{try{await api('admin_resolve',{requestId:b.dataset.approve||b.dataset.decline,approve:!!b.dataset.approve},true);toast(b.dataset.approve?'Žiadosť bola schválená.':'Žiadosť bola zamietnutá.');render();}catch(error){toast(error.message);}});
+    }
+    async function render() {
+      if(!configured){setupPage();return;}
+      document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+      app.innerHTML='<div class="empty">Načítavam…</div>';
+      try { if(page==='book')await renderBook();else if(page==='manage')await renderManage();else if(page==='admin')await renderAdmin(); }
+      catch(error) { app.innerHTML=`<div class="callout warn">${esc(error.message)}</div><button class="secondary" id="retry">Skúsiť znova</button>`;app.querySelector('#retry').onclick=()=>render(); }
+    }
+    document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
+    app.addEventListener('click',async e=>{
+      const s=e.target.closest('[data-service]');if(s){service=s.dataset.service;selectedSlot='';render();return;}
+      const d=e.target.closest('[data-date]');if(d){selectedDate=d.dataset.date;selectedSlot='';render();return;}
+      const t=e.target.closest('[data-slot]');if(t){selectedSlot=t.dataset.slot;render();}
+    });
+    render();
+  </script>
+</body>
+</html>
