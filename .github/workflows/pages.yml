@@ -1,0 +1,47 @@
+name: Publish GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure public Supabase settings
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLIC_KEY: ${{ vars.SUPABASE_PUBLIC_KEY }}
+          BARBER_SITE_URL: ${{ vars.BARBER_SITE_URL }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          values = {
+              "supabaseUrl": os.environ.get("SUPABASE_URL", ""),
+              "publicKey": os.environ.get("SUPABASE_PUBLIC_KEY", ""),
+              "siteUrl": os.environ.get("BARBER_SITE_URL", ""),
+          }
+          with open("config.js", "w", encoding="utf-8") as f:
+              f.write("window.BARBER_CONFIG = " + json.dumps(values) + ";\n")
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
