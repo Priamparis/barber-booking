@@ -17,7 +17,7 @@ Static customer page on GitHub Pages, Supabase database and Edge Functions for b
 The repository is prepared for GitHub Actions. It does not contain project URLs, passwords, API keys, or other live credentials.
 
 1. Create a Supabase project and select an EU region for the database. Copy its project URL, project reference, and public/anon key.
-2. In the GitHub repository, open **Settings → Secrets and variables → Actions**. Add repository variables `SUPABASE_URL`, `SUPABASE_PUBLIC_KEY`, `SUPABASE_PROJECT_REF`, and `BARBER_SITE_URL`. For a repository named `barber-booking`, the default site URL is `https://Priamparis.github.io/barber-booking/`.
+2. In the GitHub repository, open **Settings → Secrets and variables → Actions**. Add repository variables `SUPABASE_URL`, `SUPABASE_PUBLIC_KEY`, `SUPABASE_PROJECT_REF`, and `BARBER_SITE_URL`. For a repository named `barber-booking`, the default site URL is `https://priamparis.github.io/barber-booking/`.
 3. Add repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD`.
 4. Run **Actions → Deploy Supabase backend → Run workflow**. It applies the migration and deploys both Edge Functions.
 5. In Supabase, invite/create the barber's Auth user. In **SQL Editor**, add that exact login e-mail to the administrator allowlist and set the notification address:
