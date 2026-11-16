@@ -136,23 +136,13 @@ async function adminAction(body: any) {
       const opens = requiredString(body.opens, "Prvý začiatok", 5);
       const last = requiredString(body.lastStart, "Posledný začiatok", 5);
       if (!/^\d{2}:\d{2}$/.test(opens) || !/^\d{2}:\d{2}$/.test(last) || minute(last) < minute(opens)) throw new Error("Skontrolujte časové rozmedzie.");
-      const { data: existing, error: checkError } = await db.from("appointments").select("starts_at")
-        .eq("booking_day", day).eq("status", "confirmed");
-      if (checkError) throw checkError;
-      if ((existing ?? []).some((b: any) => minute(cleanTime(b.starts_at)) < minute(opens) || minute(cleanTime(b.starts_at)) > minute(last))) {
-        throw new Error("Nové rozmedzie by vylúčilo už rezervovaný začiatok.");
-      }
-      const { error } = await db.from("open_days").upsert({ day, first_start: opens, last_start: last });
+      const { error } = await db.rpc("admin_set_open_day", {p_day:day,p_first_start:opens,p_last_start:last});
       if (error) throw error;
       return { ok: true };
     }
     case "admin_close_day": {
       const day = checkDate(body.date);
-      const { count, error: countError } = await db.from("appointments").select("id", { count: "exact", head: true })
-        .eq("booking_day", day).eq("status", "confirmed");
-      if (countError) throw countError;
-      if (count) throw new Error("Najprv zrušte alebo presuňte rezervácie v daný deň.");
-      const { error } = await db.from("open_days").delete().eq("day", day);
+      const { error } = await db.rpc("admin_close_open_day", {p_day:day});
       if (error) throw error;
       return { ok: true };
     }
