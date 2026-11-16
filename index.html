@@ -7,11 +7,15 @@
   <meta name="description" content="Paris Scissorhands — rezervácia strihu, brady a barber služieb.">
   <title>PARIS SCISSORHANDS — Rezervácia</title>
   <link rel="icon" type="image/png" href="paris-scissorhands-mark.png">
-  <link rel="stylesheet" href="style.css?v=2026-11-17-2">
+  <link rel="preload" as="image" href="paris-scissorhands-mark.png">
+  <link rel="stylesheet" href="style.css?v=2026-11-17-3">
 </head>
 <body>
   <div class="page-loader" id="page-loader" aria-hidden="true">
-    <div class="loader-brand"><span>PARIS</span><span class="loader-brand-sub">SCISSORHANDS · EST. 2019</span></div>
+    <div class="loader-identity">
+      <img class="loader-mark" src="paris-scissorhands-mark.png" alt="">
+      <div class="loader-brand"><span>PARIS</span><span class="loader-brand-sub">SCISSORHANDS · EST. 2019</span></div>
+    </div>
     <div class="loader-cut">
       <span class="loader-rule"></span>
       <svg class="loader-scissors" viewBox="0 0 140 80" role="presentation">
@@ -146,6 +150,7 @@
       const chosen=selectedDate&&selectedSlot?`${formatDate(selectedDate)} · ${selectedSlot}`:'Vyberte deň a čas';
       app.innerHTML=`<div class="booking-flow">
         <div class="wordmark-approach" aria-hidden="true"></div>
+        <div class="brand-crest" aria-hidden="true"><img src="paris-scissorhands-mark.png" alt=""></div>
         <header class="brand-dock" aria-labelledby="brand-wordmark">
           <h1 class="brand-wordmark" id="brand-wordmark"><span>PARIS</span><span>SCISSORHANDS</span></h1>
           <div class="brand-dock-meta"><span>EST. 2019</span><span>STRIH / BRADA / KOMBO</span></div>
