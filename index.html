@@ -7,7 +7,6 @@
   <meta name="description" content="Paris Scissorhands — rezervácia strihu, brady a barber služieb.">
   <title>PARIS SCISSORHANDS — Rezervácia</title>
   <link rel="icon" type="image/png" href="paris-scissorhands-mark.png">
-  <link rel="preload" as="image" href="paris-scissorhands.jpg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,10 +27,7 @@
     <div class="loader-caption"><span>EST. 2019</span><span>STRIH / BRADA / DETAIL</span></div>
   </div>
   <header class="topbar">
-    <button class="brand-lockup" type="button" aria-label="Prejsť na rezerváciu">
-      <img class="brand-mark" src="paris-scissorhands-mark.png" alt="">
-      <div class="brand"><strong>PARIS</strong><span>SCISSORHANDS</span><small>EST. 2019</small></div>
-    </button>
+    <div class="topbar-meta"><span class="topbar-pip" aria-hidden="true"></span><span>EST. 2019</span><i>/</i><span>BARBER STUDIO</span></div>
     <nav aria-label="Hlavná navigácia">
       <button class="nav-btn active" data-page="book">Rezervovať</button>
       <button class="nav-btn" data-page="manage">Môj termín</button>
@@ -52,6 +48,7 @@
     const configured = /^https:\/\//.test(cfg.supabaseUrl || '') && /^https:\/\//.test(cfg.siteUrl || '') && !!cfg.publicKey;
     const app = document.getElementById('app');
     let page = new URLSearchParams(location.hash.slice(1)).has('manage') ? 'manage' : 'book';
+    document.body.dataset.page = page;
     let service = 'cut', selectedDate = '', selectedSlot = '', manageMode = '', manageToken = '';
     let adminDate = '', toastTimer, passwordSetup = false;
 
@@ -125,7 +122,7 @@
     }
     function toast(text) { const el=document.getElementById('toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
     function setPage(next) {
-      page=next;manageMode='';selectedSlot='';
+      page=next;document.body.dataset.page=page;manageMode='';selectedSlot='';
       if(next==='manage') manageToken=new URLSearchParams(location.hash.slice(1)).get('manage')||sessionStorage.getItem('bb-manage-token')||'';
       document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===next));
       render();window.scrollTo(0,0);
@@ -144,31 +141,20 @@
     function setupPage() {
       app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Technické nastavenie</div><h1>Čakám na<br>Supabase.</h1></div><p class="lede">Stránka je pripravená na GitHub Pages. Pred zapnutím rezervácií treba vytvoriť Supabase projekt a vložiť jeho URL a verejný kľúč do <strong>config.js</strong>.</p></div><div class="callout warn">Zákazníci tu zatiaľ nemôžu rezervovať. Táto ochrana zabraňuje tomu, aby sa verejne tvárila funkčná stránka bez databázy.</div>`;
     }
-    function bookingHero() {
-      return `<section class="brand-hero" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <div class="hero-kicker"><span class="hero-cross">✳</span> PARIS SCISSORHANDS <span class="hero-year">EST. 2019</span></div>
-          <h1 id="hero-title">TVOJ<br>STRIH<span class="hero-period">.</span></h1>
-          <p class="hero-subtitle">Presný strih. Čistá brada. Tvoj čas.</p>
-          <a class="hero-cta" href="#services"><span>REZERVOVAŤ TERMÍN</span><b aria-hidden="true">↘</b></a>
-          <div class="hero-index"><span>01 — 03</span><span>STRIH / BRADA / KOMBO</span></div>
-        </div>
-        <div class="hero-art" aria-label="Paris Scissorhands barber logo">
-          <div class="hero-art-frame"></div>
-          <img src="paris-scissorhands.jpg" alt="Znak Paris Scissorhands so zlatými nožnicami">
-          <div class="hero-art-tag"><span>BARBER<br>STUDIO</span><b>PS / 19</b></div>
-        </div>
-        <div class="hero-side-note" aria-hidden="true">CUT WITH INTENTION · CUT WITH INTENTION ·</div>
-      </section>`;
-    }
     async function renderBook() {
       const days=await getDays();
       const chosen=selectedDate&&selectedSlot?`${formatDate(selectedDate)} · ${selectedSlot}`:'Vyberte deň a čas';
-      app.innerHTML=`${bookingHero()}
+      app.innerHTML=`<div class="booking-flow">
+        <div class="wordmark-approach" aria-hidden="true"></div>
+        <header class="brand-dock" aria-labelledby="brand-wordmark">
+          <h1 class="brand-wordmark" id="brand-wordmark"><span>PARIS</span><span>SCISSORHANDS</span></h1>
+          <div class="brand-dock-meta"><span>EST. 2019</span><span>STRIH / BRADA / KOMBO</span></div>
+        </header>
         <section class="section booking-section" id="services"><div class="section-title"><h2>01 / Služba</h2><span class="section-aside">VYBER SI SVOJ BLOK</span></div>${serviceCards(service)}</section>
         <section class="section"><div class="section-title"><h2>02 / Dostupný deň</h2></div>${daysMarkup(days,selectedDate)}</section>
         ${selectedDate?`<section class="section"><div class="section-title"><h2>03 / Voľný čas</h2><span class="label">${esc(formatDate(selectedDate))}</span></div><div id="slot-area"><div class="empty">Načítavam voľné časy…</div></div></section>`:''}
-        <section class="section booking-form"><div class="section-title"><h2>04 / Vaše údaje</h2></div><div class="summary-line"><span>Vybraný termín</span><strong>${esc(chosen)}</strong></div><form id="booking-form"><div class="form-grid" style="margin-top:16px"><div class="field"><label for="name">Meno</label><input id="name" name="name" autocomplete="name" required maxlength="80"></div><div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email"></div><div class="field"><label for="phone">Telefón</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div></div><p class="note">Vyplňte e-mail alebo telefón. Potvrdenie a pripomienku pošleme na zvolený kontakt.</p><div class="button-row"><button class="primary" type="submit">Potvrdiť rezerváciu ↗</button></div></form></section>`;
+        <section class="section booking-form"><div class="section-title"><h2>04 / Vaše údaje</h2></div><div class="summary-line"><span>Vybraný termín</span><strong>${esc(chosen)}</strong></div><form id="booking-form"><div class="form-grid" style="margin-top:16px"><div class="field"><label for="name">Meno</label><input id="name" name="name" autocomplete="name" required maxlength="80"></div><div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email"></div><div class="field"><label for="phone">Telefón</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div></div><p class="note">Vyplňte e-mail alebo telefón. Potvrdenie a pripomienku pošleme na zvolený kontakt.</p><div class="button-row"><button class="primary" type="submit">Potvrdiť rezerváciu ↗</button></div></form></section>
+      </div>`;
       if(selectedDate) {
         const slotArea=app.querySelector('#slot-area');
         try { const r=await api('slots',{date:selectedDate,service});slotArea.innerHTML=slotsMarkup(r.slots||[],selectedSlot); }
@@ -281,8 +267,6 @@
       catch(error) { app.innerHTML=`<div class="callout warn">${esc(error.message)}</div><button class="secondary" id="retry">Skúsiť znova</button>`;app.querySelector('#retry').onclick=()=>render(); }
     }
     document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
-    const brandMark=document.querySelector('.brand-lockup');
-    brandMark.addEventListener('click',()=>setPage('book'));
     app.addEventListener('click',async e=>{
       const s=e.target.closest('[data-service]');if(s){service=s.dataset.service;selectedSlot='';render();return;}
       const d=e.target.closest('[data-date]');if(d){selectedDate=d.dataset.date;selectedSlot='';render();return;}
