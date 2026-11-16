@@ -147,6 +147,33 @@ begin
 end;
 $$;
 
+create or replace function public.admin_set_open_day(p_day date,p_first_start time,p_last_start time)
+returns void language plpgsql security definer set search_path=public
+as $$
+begin
+  perform pg_advisory_xact_lock(hashtext(p_day::text));
+  if p_last_start<p_first_start then raise exception 'Posledný začiatok musí byť po prvom začiatku.'; end if;
+  if exists(select 1 from public.appointments a where a.booking_day=p_day and a.status='confirmed'
+    and (a.starts_at<p_first_start or a.starts_at>p_last_start)) then
+    raise exception 'Nové rozmedzie by vylúčilo už rezervovaný začiatok.';
+  end if;
+  insert into public.open_days(day,first_start,last_start) values(p_day,p_first_start,p_last_start)
+    on conflict(day) do update set first_start=excluded.first_start,last_start=excluded.last_start;
+end;
+$$;
+
+create or replace function public.admin_close_open_day(p_day date)
+returns void language plpgsql security definer set search_path=public
+as $$
+begin
+  perform pg_advisory_xact_lock(hashtext(p_day::text));
+  if exists(select 1 from public.appointments a where a.booking_day=p_day and a.status='confirmed') then
+    raise exception 'Najprv zrušte alebo presuňte rezervácie v daný deň.';
+  end if;
+  delete from public.open_days where day=p_day;
+end;
+$$;
+
 create or replace function public.customer_booking(p_token_hash text)
 returns table(appointment_id uuid, booking_reference text, customer_name text, service text,
   booking_day date, starts_at time, duration_minutes integer, status text, pending_request boolean)
@@ -193,6 +220,13 @@ begin
     if p_action = 'reschedule' then
       v_new_duration := case p_new_service when 'cut' then 60 when 'combo' then 90 when 'beard' then 30 else null end;
       if v_new_duration is null or p_new_day is null or p_new_start is null then raise exception 'Vyberte nový deň, čas a službu.'; end if;
+      perform pg_advisory_xact_lock(hashtext(p_new_day::text));
+      select * into v_day from public.open_days where day=p_new_day;
+      if not found or p_new_start<v_day.first_start or p_new_start>v_day.last_start then raise exception 'Navrhovaný čas nie je v otvorenom rozvrhu.'; end if;
+      if ((p_new_day+p_new_start) at time zone v_settings.timezone)<=now() then raise exception 'Navrhovaný čas už uplynul.'; end if;
+      if exists(select 1 from public.appointments a where a.booking_day=p_new_day and a.status='confirmed'
+        and a.id<>v_booking.id and p_new_start<a.starts_at+make_interval(mins=>a.duration_minutes)
+        and p_new_start+make_interval(mins=>v_new_duration)>a.starts_at) then raise exception 'Navrhovaný čas už nie je voľný.'; end if;
     end if;
     insert into public.change_requests(appointment_id, action, new_service, new_day, new_start)
     values (v_booking.id, p_action, case when p_action='reschedule' then p_new_service end,
@@ -339,12 +373,16 @@ end;
 $$;
 
 revoke all on function public.create_booking(text,text,text,text,date,time,text,text) from public, anon, authenticated;
+revoke all on function public.admin_set_open_day(date,time,time) from public, anon, authenticated;
+revoke all on function public.admin_close_open_day(date) from public, anon, authenticated;
 revoke all on function public.customer_booking(text) from public, anon, authenticated;
 revoke all on function public.manage_booking(text,text,text,date,time) from public, anon, authenticated;
 revoke all on function public.admin_resolve_request(uuid,boolean) from public, anon, authenticated;
 revoke all on function public.claim_notifications(integer) from public, anon, authenticated;
 revoke all on function public.finish_notification(uuid,boolean,text) from public, anon, authenticated;
 grant execute on function public.create_booking(text,text,text,text,date,time,text,text) to service_role;
+grant execute on function public.admin_set_open_day(date,time,time) to service_role;
+grant execute on function public.admin_close_open_day(date) to service_role;
 grant execute on function public.customer_booking(text) to service_role;
 grant execute on function public.manage_booking(text,text,text,date,time) to service_role;
 grant execute on function public.admin_resolve_request(uuid,boolean) to service_role;
