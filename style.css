@@ -39,11 +39,11 @@ a { color: inherit; }
   display: grid;
   justify-items: center;
   place-content: center;
-  gap: clamp(34px, 7vh, 72px);
+  gap: clamp(20px, 3.4vh, 30px);
   overflow: hidden;
   background: var(--ink);
   color: var(--paper);
-  transition: opacity .48s ease, visibility .48s ease;
+  transition: opacity .42s ease, visibility .42s ease;
 }
 .page-loader.is-finished { opacity: 0; visibility: hidden; pointer-events: none; }
 .loader-identity { display: grid; justify-items: center; gap: 13px; }
@@ -52,7 +52,7 @@ a { color: inherit; }
 .loader-brand-sub { margin-top: 12px; color: var(--gold); font: 10px var(--mono); letter-spacing: .22em; }
 .loader-cut { position: relative; width: 100vw; height: 80px; overflow: hidden; }
 .loader-rule { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent, rgba(197,161,107,.8) 18%, rgba(197,161,107,.8) 82%, transparent); }
-.loader-scissors { position: absolute; top: 1px; left: -150px; width: 145px; height: 78px; color: var(--gold-light); animation: scissor-travel 1.55s cubic-bezier(.45,.02,.22,1) .12s both; }
+.loader-scissors { position: absolute; top: 1px; left: -150px; width: 145px; height: 78px; color: var(--gold-light); animation: scissor-travel 1s cubic-bezier(.45,.02,.22,1) .06s both; }
 .scissor-blade { fill: none; stroke: currentColor; stroke-width: 2.7; stroke-linecap: square; transform-box: view-box; transform-origin: 32px 40px; }
 .blade-top { animation: blade-top .24s ease-in-out infinite alternate; }
 .blade-bottom { animation: blade-bottom .24s ease-in-out infinite alternate; }
