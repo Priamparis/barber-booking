@@ -91,7 +91,8 @@ body[data-page="book"] main { margin-top: 0; }
 .landing-mark { position: relative; z-index: 1; display: block; width: clamp(190px, 51vw, 460px); max-width: 76vw; aspect-ratio: 1; object-fit: contain; mix-blend-mode: multiply; }
 .brand-dock-sentinel { height: 1px; }
 .brand-dock {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 30;
   width: 100%;
   padding: 0 clamp(14px, 2.4vw, 34px);
@@ -99,7 +100,6 @@ body[data-page="book"] main { margin-top: 0; }
   background: var(--ink);
   color: var(--paper);
 }
-.brand-dock.is-pinned { position: fixed; top: 0; left: 0; right: 0; width: 100vw; }
 .brand-wordmark {
   display: flex;
   align-items: baseline;
@@ -123,7 +123,6 @@ body[data-page="book"] main { margin-top: 0; }
 .brand-dock-nav .nav-btn { min-height: 27px; padding: 4px 1px; border: 0; background: transparent; color: #a9a294; box-shadow: none; font-size: 9px; letter-spacing: .12em; }
 .brand-dock-nav .nav-btn:hover { color: var(--gold-light); transform: none; }
 .brand-dock-nav .nav-btn.active, .brand-dock-nav .nav-btn.active:hover { border: 0; background: transparent; color: var(--gold-light); }
-.booking-flow.dock-pinned .booking-content { padding-top: var(--dock-height, 0px); }
 .booking-content { width: min(100% - 48px, 1020px); margin: 0 auto; padding-bottom: 22px; }
 .section.service-section { margin: 26px 0; }
 .page-navigation { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 20px; }

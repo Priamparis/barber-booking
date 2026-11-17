@@ -8,7 +8,7 @@
   <title>PARIS SCISSORHANDS — Rezervácia</title>
   <link rel="icon" type="image/png" href="paris-scissorhands-mark.png">
   <link rel="preload" as="image" href="paris-scissorhands-mark.png">
-  <link rel="stylesheet" href="style.css?v=2026-11-17-11">
+  <link rel="stylesheet" href="style.css?v=2026-11-17-13">
 </head>
 <body>
   <div class="page-loader" id="page-loader" aria-hidden="true">
@@ -46,7 +46,7 @@
     let page = new URLSearchParams(location.hash.slice(1)).has('manage') ? 'manage' : 'book';
     document.body.dataset.page = page;
     let service = 'cut', selectedDate = '', selectedSlot = '', manageMode = '', manageToken = '';
-    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '', dockObserver = null, dockResizeObserver = null, dockClearance = 0;
+    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '', dockObserver = null, dockResizeHandler = null, dockClearance = 0;
 
     const authLink = new URLSearchParams(location.hash.slice(1));
     if (['invite', 'recovery'].includes(authLink.get('type')) && authLink.get('access_token') && authLink.get('refresh_token')) {
@@ -119,7 +119,7 @@
     function toast(text) { const el=document.getElementById('toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
     async function setPage(next) {
       if(next==='book'&&page==='book') {
-        app.querySelector('#services')?.scrollIntoView({behavior:'smooth',block:'start'});
+        app.querySelector('.brand-dock')?.scrollIntoView({behavior:'smooth',block:'start'});
         return;
       }
       const returnToServices=next==='book'&&page!=='book';
@@ -131,7 +131,7 @@
       if(next==='manage') manageToken=new URLSearchParams(location.hash.slice(1)).get('manage')||sessionStorage.getItem('bb-manage-token')||'';
       document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===next));
       await render();
-      if(returnToServices) app.querySelector('#services')?.scrollIntoView({behavior:'smooth',block:'start'});
+      if(returnToServices) app.querySelector('.brand-dock')?.scrollIntoView({behavior:'smooth',block:'start'});
       else window.scrollTo(0,0);
     }
     function serviceCards(active) { return `<div class="service-grid">${Object.entries(SERVICES).map(([id,s],i)=>`<button class="service-card ${active===id?'selected':''}" data-service="${id}" data-index="0${i+1}"><span class="service-name">${s.name}</span><span class="service-duration">${s.duration===90?'1 h 30 min':s.duration===60?'1 hodina':'30 min'}</span></button>`).join('')}</div>`; }
@@ -191,22 +191,14 @@
     function header(eyebrow,title,lede) { return `${pageNavigation()}<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><p class="lede">${lede}</p></div>`; }
     function watchBrandDock() {
       dockObserver?.disconnect();
-      dockResizeObserver?.disconnect();
+      if(dockResizeHandler)window.removeEventListener('resize',dockResizeHandler);
       const flow=app.querySelector('.booking-flow'),sentinel=app.querySelector('.brand-dock-sentinel'),dock=app.querySelector('.brand-dock');
       if(!flow||!sentinel||!dock)return;
-      const updatePinned=pinned=>{
-        dock.classList.toggle('is-pinned',pinned);
-        flow.classList.toggle('dock-pinned',pinned);
-        if(pinned)flow.style.setProperty('--dock-height',`${dock.offsetHeight}px`);
-        else flow.style.removeProperty('--dock-height');
-      };
-      dockObserver=new IntersectionObserver(([entry])=>updatePinned(!entry.isIntersecting&&entry.boundingClientRect.top<0),{threshold:0});
+      const revealNavigation=visible=>dock.classList.toggle('is-pinned',visible);
+      dockObserver=new IntersectionObserver(([entry])=>revealNavigation(!entry.isIntersecting&&entry.boundingClientRect.top<80),{threshold:0,rootMargin:'-80px 0px 0px 0px'});
       dockObserver.observe(sentinel);
-      dockResizeObserver=new ResizeObserver(()=>{
-        if(flow.classList.contains('dock-pinned'))flow.style.setProperty('--dock-height',`${dock.offsetHeight}px`);
-        updateDockClearance();
-      });
-      dockResizeObserver.observe(dock);
+      dockResizeHandler=()=>updateDockClearance();
+      window.addEventListener('resize',dockResizeHandler);
     }
     function updateDockClearance() {
       if(page!=='book')return;
@@ -347,7 +339,11 @@
     }
     async function render() {
       if(!configured){setupPage();return;}
-      if(page!=='book') { dockObserver?.disconnect();dockResizeObserver?.disconnect();dockClearance=0;document.body.style.removeProperty('--dock-clearance'); }
+      if(page!=='book') {
+        dockObserver?.disconnect();
+        if(dockResizeHandler)window.removeEventListener('resize',dockResizeHandler);
+        dockResizeHandler=null;dockClearance=0;document.body.style.removeProperty('--dock-clearance');
+      }
       document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
       app.innerHTML='<div class="empty">Načítavam…</div>';
       try { if(page==='book')await renderBook();else if(page==='manage')await renderManage();else if(page==='admin')await renderAdmin(); }
