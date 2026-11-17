@@ -8,7 +8,7 @@
   <title>PARIS SCISSORHANDS — Rezervácia</title>
   <link rel="icon" type="image/png" href="paris-scissorhands-mark.png">
   <link rel="preload" as="image" href="paris-scissorhands-mark.png">
-  <link rel="stylesheet" href="style.css?v=2026-11-17-8">
+  <link rel="stylesheet" href="style.css?v=2026-11-17-9">
 </head>
 <body>
   <div class="page-loader" id="page-loader" aria-hidden="true">
@@ -46,7 +46,7 @@
     let page = new URLSearchParams(location.hash.slice(1)).has('manage') ? 'manage' : 'book';
     document.body.dataset.page = page;
     let service = 'cut', selectedDate = '', selectedSlot = '', manageMode = '', manageToken = '';
-    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '';
+    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '', dockObserver = null, dockResizeObserver = null;
 
     const authLink = new URLSearchParams(location.hash.slice(1));
     if (['invite', 'recovery'].includes(authLink.get('type')) && authLink.get('access_token') && authLink.get('refresh_token')) {
@@ -117,11 +117,22 @@
       if (!response.ok) throw new Error(result.msg || result.message || 'Heslo sa nepodarilo uložiť.');
     }
     function toast(text) { const el=document.getElementById('toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
-    function setPage(next) {
+    async function setPage(next) {
+      if(next==='book'&&page==='book') {
+        app.querySelector('#services')?.scrollIntoView({behavior:'smooth',block:'start'});
+        return;
+      }
+      const returnToServices=next==='book'&&page!=='book';
+      if(returnToServices) {
+        selectedDate='';selectedSlot='';slotExcludeId='';
+        window.scrollTo(0,0);
+      }
       page=next;document.body.dataset.page=page;manageMode='';selectedSlot='';
       if(next==='manage') manageToken=new URLSearchParams(location.hash.slice(1)).get('manage')||sessionStorage.getItem('bb-manage-token')||'';
       document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===next));
-      render();window.scrollTo(0,0);
+      await render();
+      if(returnToServices) app.querySelector('#services')?.scrollIntoView({behavior:'smooth',block:'start'});
+      else window.scrollTo(0,0);
     }
     function serviceCards(active) { return `<div class="service-grid">${Object.entries(SERVICES).map(([id,s],i)=>`<button class="service-card ${active===id?'selected':''}" data-service="${id}" data-index="0${i+1}"><span class="service-name">${s.name}</span><span class="service-duration">${s.duration===90?'1 h 30 min':s.duration===60?'1 hodina':'30 min'}</span></button>`).join('')}</div>`; }
     function daysMarkup(days,active='') {
@@ -178,6 +189,24 @@
       return `<nav class="page-navigation" aria-label="Navigácia"><button class="nav-btn ${page==='book'?'active':''}" data-page="book">Rezervácia</button><button class="nav-btn ${page==='manage'?'active':''}" data-page="manage">Môj termín</button><button class="nav-btn ${page==='admin'?'active':''}" data-page="admin">Správa</button></nav>`;
     }
     function header(eyebrow,title,lede) { return `${pageNavigation()}<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><p class="lede">${lede}</p></div>`; }
+    function watchBrandDock() {
+      dockObserver?.disconnect();
+      dockResizeObserver?.disconnect();
+      const flow=app.querySelector('.booking-flow'),sentinel=app.querySelector('.brand-dock-sentinel'),dock=app.querySelector('.brand-dock');
+      if(!flow||!sentinel||!dock)return;
+      const updatePinned=pinned=>{
+        dock.classList.toggle('is-pinned',pinned);
+        flow.classList.toggle('dock-pinned',pinned);
+        if(pinned)flow.style.setProperty('--dock-height',`${dock.offsetHeight}px`);
+        else flow.style.removeProperty('--dock-height');
+      };
+      dockObserver=new IntersectionObserver(([entry])=>updatePinned(!entry.isIntersecting&&entry.boundingClientRect.top<0),{threshold:0});
+      dockObserver.observe(sentinel);
+      dockResizeObserver=new ResizeObserver(()=>{
+        if(flow.classList.contains('dock-pinned'))flow.style.setProperty('--dock-height',`${dock.offsetHeight}px`);
+      });
+      dockResizeObserver.observe(dock);
+    }
     function setupPage() {
       app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Technické nastavenie</div><h1>Čakám na<br>Supabase.</h1></div><p class="lede">Stránka je pripravená na GitHub Pages. Pred zapnutím rezervácií treba vytvoriť Supabase projekt a vložiť jeho URL a verejný kľúč do <strong>config.js</strong>.</p></div><div class="callout warn">Zákazníci tu zatiaľ nemôžu rezervovať. Táto ochrana zabraňuje tomu, aby sa verejne tvárila funkčná stránka bez databázy.</div>`;
     }
@@ -189,6 +218,7 @@
         <section class="brand-stage" aria-label="Paris Scissorhands">
           <img class="landing-mark" src="paris-scissorhands-mark.png" alt="Paris Scissorhands, barber studio">
         </section>
+        <div class="brand-dock-sentinel" aria-hidden="true"></div>
         <header class="brand-dock" aria-labelledby="brand-wordmark">
           <h1 class="brand-wordmark" id="brand-wordmark"><span>PARIS</span><span>SCISSORHANDS</span></h1>
           <nav class="brand-dock-nav" aria-label="Navigácia"><button class="nav-btn active" data-page="book">Rezervácia</button><button class="nav-btn" data-page="manage">Môj termín</button><button class="nav-btn" data-page="admin">Správa</button></nav>
@@ -201,6 +231,7 @@
         </div>
       </div>
       `;
+      watchBrandDock();
       if(selectedDate) await refreshSlotChoices();
       app.querySelector('#booking-form').onsubmit=async e=>{
         e.preventDefault();const form=new FormData(e.currentTarget);
@@ -304,6 +335,7 @@
     }
     async function render() {
       if(!configured){setupPage();return;}
+      if(page!=='book') { dockObserver?.disconnect();dockResizeObserver?.disconnect(); }
       document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
       app.innerHTML='<div class="empty">Načítavam…</div>';
       try { if(page==='book')await renderBook();else if(page==='manage')await renderManage();else if(page==='admin')await renderAdmin(); }
