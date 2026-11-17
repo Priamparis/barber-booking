@@ -8,7 +8,7 @@
   <title>PARIS SCISSORHANDS — Rezervácia</title>
   <link rel="icon" type="image/png" href="paris-scissorhands-mark.png">
   <link rel="preload" as="image" href="paris-scissorhands-mark.png">
-  <link rel="stylesheet" href="style.css?v=2026-11-17-4">
+  <link rel="stylesheet" href="style.css?v=2026-11-17-5">
 </head>
 <body>
   <div class="page-loader" id="page-loader" aria-hidden="true">
@@ -30,14 +30,6 @@
     </div>
     <div class="loader-caption"><span>EST. 2019</span><span>STRIH / BRADA / DETAIL</span></div>
   </div>
-  <header class="topbar">
-    <div class="topbar-meta"><span class="topbar-pip" aria-hidden="true"></span><span>EST. 2019</span><i>/</i><span>BARBER STUDIO</span></div>
-    <nav aria-label="Hlavná navigácia">
-      <button class="nav-btn active" data-page="book">Rezervovať</button>
-      <button class="nav-btn" data-page="manage">Môj termín</button>
-      <button class="nav-btn" data-page="admin">Správa</button>
-    </nav>
-  </header>
   <main id="app" aria-live="polite"></main>
   <div id="toast" class="toast" role="status"></div>
   <footer><span>PARIS / SCISSORHANDS</span><span>EST. 2019 · REZERVAČNÝ SYSTÉM</span></footer>
@@ -54,7 +46,7 @@
     let page = new URLSearchParams(location.hash.slice(1)).has('manage') ? 'manage' : 'book';
     document.body.dataset.page = page;
     let service = 'cut', selectedDate = '', selectedSlot = '', manageMode = '', manageToken = '';
-    let adminDate = '', toastTimer, passwordSetup = false;
+    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '';
 
     const authLink = new URLSearchParams(location.hash.slice(1));
     if (['invite', 'recovery'].includes(authLink.get('type')) && authLink.get('access_token') && authLink.get('refresh_token')) {
@@ -140,31 +132,70 @@
       if(!slots.length)return '<div class="empty">Na tento deň už nie sú voľné termíny pre vybranú službu.</div>';
       return `<div class="slot-list">${slots.map(t=>`<button class="slot ${active===t?'selected':''}" data-slot="${t}">${esc(t)}</button>`).join('')}</div>`;
     }
+    function updateSelectedAppointment() {
+      const field=app.querySelector('#selected-appointment');
+      if(field) field.textContent=selectedDate&&selectedSlot?`${formatDate(selectedDate)} · ${selectedSlot}`:'Vyberte deň a čas';
+    }
+    async function refreshSlotChoices() {
+      const area=app.querySelector('#slot-area');
+      if(!selectedDate||!area)return;
+      const requestId=++slotRequestId;
+      area.innerHTML='<div class="empty">Načítavam voľné časy…</div>';
+      try {
+        const result=await api('slots',{date:selectedDate,service,excludeId:slotExcludeId||undefined});
+        if(requestId===slotRequestId&&area.isConnected) area.innerHTML=slotsMarkup(result.slots||[],selectedSlot);
+      } catch(error) {
+        if(requestId===slotRequestId&&area.isConnected) area.innerHTML=`<div class="empty">${esc(error.message)}</div>`;
+      }
+    }
+    function selectDate(date) {
+      selectedDate=date;
+      selectedSlot='';
+      app.querySelectorAll('[data-date]').forEach(button=>button.classList.toggle('selected',button.dataset.date===date));
+      let section=app.querySelector('#slot-section');
+      if(!section) {
+        const dateSection=app.querySelector('#date-section');
+        if(!dateSection)return;
+        const heading=page==='manage'&&manageMode==='change'?'Nový čas':'03 / Voľný čas';
+        section=document.createElement('section');
+        section.className='section';
+        section.id='slot-section';
+        section.innerHTML=`<div class="section-title"><h2>${heading}</h2><span class="label" id="slot-date-label"></span></div><div id="slot-area"></div>`;
+        dateSection.insertAdjacentElement('afterend',section);
+      }
+      const dateLabel=section.querySelector('#slot-date-label');
+      if(dateLabel) dateLabel.textContent=formatDate(date);
+      updateSelectedAppointment();
+      refreshSlotChoices();
+    }
     async function getDays() { const r=await api('days');return r.days||[]; }
-    function header(eyebrow,title,lede) { return `<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><p class="lede">${lede}</p></div>`; }
+    function pageNavigation() {
+      return `<nav class="page-navigation" aria-label="Správa termínu"><button class="nav-btn ${page==='manage'?'active':''}" data-page="manage">Môj termín</button><button class="nav-btn ${page==='admin'?'active':''}" data-page="admin">Správa</button></nav>`;
+    }
+    function header(eyebrow,title,lede) { return `${pageNavigation()}<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><p class="lede">${lede}</p></div>`; }
     function setupPage() {
       app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Technické nastavenie</div><h1>Čakám na<br>Supabase.</h1></div><p class="lede">Stránka je pripravená na GitHub Pages. Pred zapnutím rezervácií treba vytvoriť Supabase projekt a vložiť jeho URL a verejný kľúč do <strong>config.js</strong>.</p></div><div class="callout warn">Zákazníci tu zatiaľ nemôžu rezervovať. Táto ochrana zabraňuje tomu, aby sa verejne tvárila funkčná stránka bez databázy.</div>`;
     }
     async function renderBook() {
+      slotExcludeId='';
       const days=await getDays();
       const chosen=selectedDate&&selectedSlot?`${formatDate(selectedDate)} · ${selectedSlot}`:'Vyberte deň a čas';
       app.innerHTML=`<div class="booking-flow">
-        <div class="wordmark-approach" aria-hidden="true"></div>
-        <div class="brand-crest" aria-hidden="true"><img src="paris-scissorhands-mark.png" alt=""></div>
-        <header class="brand-dock" aria-labelledby="brand-wordmark">
-          <h1 class="brand-wordmark" id="brand-wordmark"><span>PARIS</span><span>SCISSORHANDS</span></h1>
-          <div class="brand-dock-meta"><span>EST. 2019</span><span>STRIH / BRADA / KOMBO</span></div>
-        </header>
-        <section class="section booking-section" id="services"><div class="section-title"><h2>01 / Služba</h2><span class="section-aside">VYBER SI SVOJ BLOK</span></div>${serviceCards(service)}</section>
-        <section class="section"><div class="section-title"><h2>02 / Dostupný deň</h2></div>${daysMarkup(days,selectedDate)}</section>
-        ${selectedDate?`<section class="section"><div class="section-title"><h2>03 / Voľný čas</h2><span class="label">${esc(formatDate(selectedDate))}</span></div><div id="slot-area"><div class="empty">Načítavam voľné časy…</div></div></section>`:''}
-        <section class="section booking-form"><div class="section-title"><h2>04 / Vaše údaje</h2></div><div class="summary-line"><span>Vybraný termín</span><strong>${esc(chosen)}</strong></div><form id="booking-form"><div class="form-grid" style="margin-top:16px"><div class="field"><label for="name">Meno</label><input id="name" name="name" autocomplete="name" required maxlength="80"></div><div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email"></div><div class="field"><label for="phone">Telefón</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div></div><p class="note">Vyplňte e-mail alebo telefón. Potvrdenie a pripomienku pošleme na zvolený kontakt.</p><div class="button-row"><button class="primary" type="submit">Potvrdiť rezerváciu ↗</button></div></form></section>
-      </div>`;
-      if(selectedDate) {
-        const slotArea=app.querySelector('#slot-area');
-        try { const r=await api('slots',{date:selectedDate,service});slotArea.innerHTML=slotsMarkup(r.slots||[],selectedSlot); }
-        catch(error) { slotArea.innerHTML=`<div class="empty">${esc(error.message)}</div>`; }
-      }
+        <div class="brand-stage" aria-hidden="true"></div>
+        <div class="brand-sticky">
+          <header class="brand-dock" aria-labelledby="brand-wordmark">
+            <h1 class="brand-wordmark" id="brand-wordmark"><span>PARIS</span><span>SCISSORHANDS</span></h1>
+            <nav class="brand-dock-nav" aria-label="Ďalšie možnosti"><button class="nav-btn" data-page="manage">Môj termín</button><button class="nav-btn" data-page="admin">Správa</button></nav>
+          </header>
+          <div class="section-title service-sticky-title"><h2>01 / Služba</h2><span class="section-aside">VYBER SI SVOJ BLOK</span></div>
+        </div>
+        <section class="section service-section" id="services">${serviceCards(service)}</section>
+        </div>
+        <section class="section" id="date-section"><div class="section-title"><h2>02 / Dostupný deň</h2></div>${daysMarkup(days,selectedDate)}</section>
+        ${selectedDate?`<section class="section" id="slot-section"><div class="section-title"><h2>03 / Voľný čas</h2><span class="label" id="slot-date-label">${esc(formatDate(selectedDate))}</span></div><div id="slot-area"><div class="empty">Načítavam voľné časy…</div></div></section>`:''}
+        <section class="section booking-form"><div class="section-title"><h2>04 / Vaše údaje</h2></div><div class="summary-line"><span>Vybraný termín</span><strong id="selected-appointment">${esc(chosen)}</strong></div><form id="booking-form"><div class="form-grid" style="margin-top:16px"><div class="field"><label for="name">Meno</label><input id="name" name="name" autocomplete="name" required maxlength="80"></div><div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email"></div><div class="field"><label for="phone">Telefón</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div></div><p class="note">Vyplňte e-mail alebo telefón. Potvrdenie a pripomienku pošleme na zvolený kontakt.</p><div class="button-row"><button class="primary" type="submit">Potvrdiť rezerváciu ↗</button></div></form></section>
+      `;
+      if(selectedDate) await refreshSlotChoices();
       app.querySelector('#booking-form').onsubmit=async e=>{
         e.preventDefault();const form=new FormData(e.currentTarget);
         const email=String(form.get('email')||'').trim(),phone=String(form.get('phone')||'').trim();
@@ -199,10 +230,11 @@
         const days=await getDays();
         app.innerHTML=`${header(`Úprava ${esc(b.booking_reference)}`,'Zmeniť<br>termín.', 'Viac než 24 hodín pred termínom môžete zmenu vykonať priamo. V posledných 24 hodinách ju schvaľuje barber.')}
           <section class="section"><div class="section-title"><h2>Nová služba</h2></div>${serviceCards(service)}</section>
-          <section class="section"><div class="section-title"><h2>Nový deň</h2></div>${daysMarkup(days,selectedDate)}</section>
-          ${selectedDate?`<section class="section"><div class="section-title"><h2>Nový čas</h2></div><div id="slot-area"><div class="empty">Načítavam voľné časy…</div></div></section>`:''}
+          <section class="section" id="date-section"><div class="section-title"><h2>Nový deň</h2></div>${daysMarkup(days,selectedDate)}</section>
+          ${selectedDate?`<section class="section" id="slot-section"><div class="section-title"><h2>Nový čas</h2><span class="label" id="slot-date-label">${esc(formatDate(selectedDate))}</span></div><div id="slot-area"><div class="empty">Načítavam voľné časy…</div></div></section>`:''}
           <div class="button-row"><button class="primary" id="save-change">Odoslať zmenu</button><button class="secondary" id="back-manage">Späť</button></div>`;
-        if(selectedDate){const slotArea=app.querySelector('#slot-area');try{const r=await api('slots',{date:selectedDate,service,excludeId:b.appointment_id});slotArea.innerHTML=slotsMarkup(r.slots||[],selectedSlot);}catch(error){slotArea.innerHTML=`<div class="empty">${esc(error.message)}</div>`;}}
+        slotExcludeId=b.appointment_id;
+        if(selectedDate) await refreshSlotChoices();
         app.querySelector('#back-manage').onclick=()=>{manageMode='';render();};
         app.querySelector('#save-change').onclick=async()=>{
           if(!selectedDate||!selectedSlot)return toast('Vyberte nový deň a čas.');
@@ -271,11 +303,11 @@
       try { if(page==='book')await renderBook();else if(page==='manage')await renderManage();else if(page==='admin')await renderAdmin(); }
       catch(error) { app.innerHTML=`<div class="callout warn">${esc(error.message)}</div><button class="secondary" id="retry">Skúsiť znova</button>`;app.querySelector('#retry').onclick=()=>render(); }
     }
-    document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>setPage(b.dataset.page)));
+    document.addEventListener('click',e=>{const nav=e.target.closest('.nav-btn[data-page]');if(nav)setPage(nav.dataset.page);});
     app.addEventListener('click',async e=>{
-      const s=e.target.closest('[data-service]');if(s){service=s.dataset.service;selectedSlot='';render();return;}
-      const d=e.target.closest('[data-date]');if(d){selectedDate=d.dataset.date;selectedSlot='';render();return;}
-      const t=e.target.closest('[data-slot]');if(t){selectedSlot=t.dataset.slot;render();}
+      const s=e.target.closest('[data-service]');if(s){service=s.dataset.service;selectedSlot='';app.querySelectorAll('[data-service]').forEach(b=>b.classList.toggle('selected',b.dataset.service===service));updateSelectedAppointment();await refreshSlotChoices();return;}
+      const d=e.target.closest('[data-date]');if(d){selectDate(d.dataset.date);return;}
+      const t=e.target.closest('[data-slot]');if(t){selectedSlot=t.dataset.slot;app.querySelectorAll('[data-slot]').forEach(b=>b.classList.toggle('selected',b.dataset.slot===selectedSlot));updateSelectedAppointment();}
     });
     render();
     const pageLoader=document.getElementById('page-loader');
