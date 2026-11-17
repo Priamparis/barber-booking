@@ -46,7 +46,7 @@
     let page = new URLSearchParams(location.hash.slice(1)).has('manage') ? 'manage' : 'book';
     document.body.dataset.page = page;
     let service = 'cut', selectedDate = '', selectedSlot = '', manageMode = '', manageToken = '';
-    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '', dockObserver = null, dockResizeObserver = null;
+    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '', dockObserver = null, dockResizeObserver = null, dockClearance = 0;
 
     const authLink = new URLSearchParams(location.hash.slice(1));
     if (['invite', 'recovery'].includes(authLink.get('type')) && authLink.get('access_token') && authLink.get('refresh_token')) {
@@ -157,9 +157,9 @@
       area.innerHTML='<div class="empty">Načítavam voľné časy…</div>';
       try {
         const result=await api('slots',{date:selectedDate,service,excludeId:slotExcludeId||undefined});
-        if(requestId===slotRequestId&&area.isConnected) area.innerHTML=slotsMarkup(result.slots||[],selectedSlot);
+        if(requestId===slotRequestId&&area.isConnected) { area.innerHTML=slotsMarkup(result.slots||[],selectedSlot);updateDockClearance(); }
       } catch(error) {
-        if(requestId===slotRequestId&&area.isConnected) area.innerHTML=`<div class="empty">${esc(error.message)}</div>`;
+        if(requestId===slotRequestId&&area.isConnected) { area.innerHTML=`<div class="empty">${esc(error.message)}</div>`;updateDockClearance(); }
       }
     }
     function selectDate(date) {
@@ -204,8 +204,19 @@
       dockObserver.observe(sentinel);
       dockResizeObserver=new ResizeObserver(()=>{
         if(flow.classList.contains('dock-pinned'))flow.style.setProperty('--dock-height',`${dock.offsetHeight}px`);
+        updateDockClearance();
       });
       dockResizeObserver.observe(dock);
+    }
+    function updateDockClearance() {
+      if(page!=='book')return;
+      const sentinel=app.querySelector('.brand-dock-sentinel');
+      if(!sentinel||!document.querySelector('body > footer'))return;
+      const baseScrollHeight=document.documentElement.scrollHeight-dockClearance;
+      const sentinelDocumentTop=sentinel.getBoundingClientRect().top+window.scrollY;
+      const contentAfterDock=baseScrollHeight-sentinelDocumentTop;
+      dockClearance=Math.max(0,Math.ceil(window.innerHeight-contentAfterDock+2));
+      document.body.style.setProperty('--dock-clearance',`${dockClearance}px`);
     }
     function setupPage() {
       app.innerHTML=`<div class="page-head"><div><div class="eyebrow">Technické nastavenie</div><h1>Čakám na<br>Supabase.</h1></div><p class="lede">Stránka je pripravená na GitHub Pages. Pred zapnutím rezervácií treba vytvoriť Supabase projekt a vložiť jeho URL a verejný kľúč do <strong>config.js</strong>.</p></div><div class="callout warn">Zákazníci tu zatiaľ nemôžu rezervovať. Táto ochrana zabraňuje tomu, aby sa verejne tvárila funkčná stránka bez databázy.</div>`;
@@ -233,6 +244,7 @@
       `;
       watchBrandDock();
       if(selectedDate) await refreshSlotChoices();
+      updateDockClearance();
       app.querySelector('#booking-form').onsubmit=async e=>{
         e.preventDefault();const form=new FormData(e.currentTarget);
         const email=String(form.get('email')||'').trim(),phone=String(form.get('phone')||'').trim();
@@ -335,7 +347,7 @@
     }
     async function render() {
       if(!configured){setupPage();return;}
-      if(page!=='book') { dockObserver?.disconnect();dockResizeObserver?.disconnect(); }
+      if(page!=='book') { dockObserver?.disconnect();dockResizeObserver?.disconnect();dockClearance=0;document.body.style.removeProperty('--dock-clearance'); }
       document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
       app.innerHTML='<div class="empty">Načítavam…</div>';
       try { if(page==='book')await renderBook();else if(page==='manage')await renderManage();else if(page==='admin')await renderAdmin(); }
