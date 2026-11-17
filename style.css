@@ -116,6 +116,7 @@ body[data-page="book"] main { margin-top: 0; }
 .brand-dock-nav .nav-btn:hover { color: var(--gold-light); transform: none; }
 .brand-dock-nav .nav-btn.active, .brand-dock-nav .nav-btn.active:hover { border: 0; background: transparent; color: var(--gold-light); }
 .section-title.service-sticky-title { margin: 0; padding: 11px max(14px, calc((100vw - 1320px) / 2)); border-bottom: 1px solid var(--ink); background: #d0cbc2; }
+.brand-release-space { height: clamp(88px, 18vh, 170px); }
 .section.service-section { width: min(100% - 48px, 1320px); margin: 24px auto 38px; }
 .page-navigation { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 20px; }
 .page-navigation .nav-btn { border-color: rgba(17,17,15,.42); color: var(--ink); }
