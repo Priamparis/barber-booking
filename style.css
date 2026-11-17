@@ -8,7 +8,7 @@
   --gold: #c5a16b;
   --gold-light: #dfc79d;
   --warn: #f0d0c1;
-  --wordmark-size: clamp(34px, 7.5vw, 104px);
+  --wordmark-size: clamp(32px, 5.7vw, 94px);
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   --display: Impact, "Arial Narrow", "Helvetica Neue", sans-serif;
   font-family: var(--mono);
@@ -79,18 +79,22 @@ body[data-page="book"] main { margin-top: 0; }
 .booking-flow { position: relative; width: 100vw; margin-left: calc(50% - 50vw); }
 .brand-stage {
   position: relative;
-  height: clamp(72px, 12vh, 150px);
+  display: grid;
+  place-items: center;
+  height: max(360px, calc(100svh - var(--wordmark-size) - 45px));
+  padding: 20px;
   overflow: hidden;
   background-color: #cbc7be;
   background-image: linear-gradient(128deg, rgba(255,255,255,.30), transparent 36%), radial-gradient(ellipse at 72% 31%, rgba(73,69,63,.09), transparent 48%), linear-gradient(145deg, #d5d1c8 0%, #c6c2b9 58%, #d2cec5 100%);
 }
 .brand-stage::after { position: absolute; inset: 0; content: ""; pointer-events: none; background: url("concrete-grain.svg") repeat; background-size: 220px; opacity: .16; mix-blend-mode: multiply; }
+.landing-mark { position: relative; z-index: 1; display: block; width: clamp(190px, 51vw, 460px); max-width: 76vw; aspect-ratio: 1; object-fit: contain; mix-blend-mode: multiply; }
 .brand-dock {
   position: sticky;
   top: 0;
   z-index: 30;
   width: 100%;
-  padding: 0 clamp(12px, 2.1vw, 30px);
+  padding: 0 clamp(14px, 2.4vw, 34px);
   border-bottom: 2px solid var(--gold);
   background: var(--ink);
   color: var(--paper);
@@ -102,22 +106,23 @@ body[data-page="book"] main { margin-top: 0; }
   gap: .12em;
   width: 100%;
   margin: 0;
-  overflow: hidden;
+  overflow: visible;
   font-family: var(--display);
   font-size: var(--wordmark-size);
   font-weight: 900;
-  line-height: 1;
-  letter-spacing: -.075em;
+  line-height: .96;
+  letter-spacing: -.015em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .brand-wordmark span { flex: 0 0 auto; }
-.brand-wordmark span:last-child { color: var(--gold-light); }
-.brand-dock-nav { display: flex; justify-content: flex-end; gap: clamp(12px, 2vw, 26px); padding: 5px 1px 8px; border-top: 1px solid #555047; }
+.brand-wordmark span:last-child { color: var(--gold-light); font-size: .9em; letter-spacing: 0; }
+.brand-dock-nav { display: flex; justify-content: flex-end; gap: clamp(16px, 2.6vw, 32px); padding: 5px 1px 8px; border-top: 1px solid #555047; }
 .brand-dock-nav .nav-btn { min-height: 27px; padding: 4px 1px; border: 0; background: transparent; color: #a9a294; box-shadow: none; font-size: 9px; letter-spacing: .12em; }
 .brand-dock-nav .nav-btn:hover { color: var(--gold-light); transform: none; }
 .brand-dock-nav .nav-btn.active, .brand-dock-nav .nav-btn.active:hover { border: 0; background: transparent; color: var(--gold-light); }
-.section.service-section { width: min(100% - 48px, 1320px); margin: 16px auto 20px; }
+.booking-content { width: min(100% - 48px, 1020px); margin: 0 auto; padding-bottom: 22px; }
+.section.service-section { margin: 26px 0; }
 .page-navigation { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 20px; }
 .page-navigation .nav-btn { border-color: rgba(17,17,15,.42); color: var(--ink); }
 .page-navigation .nav-btn:hover { border-color: var(--ink); color: var(--ink); }
@@ -130,7 +135,7 @@ h2 { margin: 0 0 14px; font-family: var(--display); font-size: 20px; letter-spac
 h3 { margin: 0; font-size: 14px; text-transform: uppercase; }
 p { line-height: 1.6; }
 .lede { max-width: 470px; margin: 0; color: var(--muted); font-size: 12px; }
-.section { margin: 18px 0; animation: rise-in .54s ease both; scroll-margin-top: calc(var(--wordmark-size) + 42px); }
+.section { margin: 24px 0; animation: rise-in .54s ease both; scroll-margin-top: calc(var(--wordmark-size) + 42px); }
 .section:nth-of-type(2) { animation-delay: .06s; }
 .section:nth-of-type(3) { animation-delay: .12s; }
 .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--ink); }
@@ -164,7 +169,7 @@ p { line-height: 1.6; }
 .empty { padding: 12px 16px; border: 2px dashed #958b79; background: rgba(251,248,240,.72); color: var(--muted); font-size: 12px; line-height: 1.5; }
 
 .booking-form, .panel, .admin-card { padding: clamp(18px, 3vw, 28px); border: 2px solid var(--ink); background: var(--card); box-shadow: 6px 6px 0 var(--ink); }
-.booking-form { margin-top: 18px; padding: 14px 16px; }
+.booking-form { width: 100%; max-width: 900px; margin: 28px auto 38px; padding: clamp(18px, 2.6vw, 30px); }
 .booking-form .section-title { margin-bottom: 8px; padding-bottom: 6px; }
 .booking-form .summary-line { margin-top: 8px; padding-top: 8px; }
 .booking-form .form-grid { gap: 10px 14px; }
@@ -187,6 +192,7 @@ p { line-height: 1.6; }
 button:disabled { opacity: .48; cursor: not-allowed; }
 .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .summary-line { display: flex; justify-content: space-between; gap: 14px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 11px; }
+.summary-line[hidden] { display: none; }
 .summary-line strong { text-align: right; }
 .callout { padding: 14px 16px; border: 1px solid var(--ink); background: #e2ddcf; font-size: 11px; line-height: 1.6; }
 .callout.warn { background: var(--warn); }
@@ -209,24 +215,29 @@ footer span:first-child { color: var(--gold-light); font-weight: 900; }
 
 @keyframes rise-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 820px) {
-  :root { --wordmark-size: clamp(30px, 10.1vw, 84px); }
+  :root { --wordmark-size: clamp(30px, 6.8vw, 60px); }
   main { width: min(100% - 36px, 1320px); margin-top: 26px; }
 }
 
 @media (max-width: 620px) {
-  :root { --wordmark-size: clamp(28px, 11vw, 46px); }
+  :root { --wordmark-size: clamp(28px, 8.5vw, 40px); }
   .nav-btn { min-height: 31px; padding: 6px 8px; font-size: 8px; letter-spacing: .035em; }
   main { width: min(100% - 28px, 1320px); margin-top: 20px; }
   body[data-page="book"] main { width: min(100% - 28px, 1320px); }
-  .brand-dock { padding-right: 10px; padding-left: 10px; }
-  .brand-wordmark { letter-spacing: -.085em; }
-  .brand-dock-nav { gap: 18px; padding-bottom: 7px; }
-  .brand-dock-nav .nav-btn { font-size: 8px; letter-spacing: .09em; }
-  .section.service-section { width: min(100% - 28px, 1320px); margin-top: 14px; }
+  .brand-stage { height: max(340px, calc(100svh - var(--wordmark-size) - 42px)); padding: 16px; }
+  .landing-mark { width: clamp(190px, 55vw, 320px); }
+  .brand-dock { padding-right: 12px; padding-left: 12px; }
+  .brand-wordmark { letter-spacing: -.02em; }
+  .brand-wordmark span:last-child { font-size: .86em; letter-spacing: .005em; }
+  .brand-dock-nav { gap: clamp(12px, 4vw, 18px); padding-bottom: 7px; }
+  .brand-dock-nav .nav-btn { min-height: 25px; padding: 3px 0; font-size: 8px; letter-spacing: .07em; }
+  .booking-content { width: min(100% - 28px, 1020px); }
+  .section.service-section { margin-top: 20px; }
   .page-head { align-items: flex-start; flex-direction: column; gap: 14px; }
   .service-grid, .admin-grid { grid-template-columns: 1fr; }
   .service-card { min-height: 94px; }
   .service-duration { margin-top: 13px; }
+  .booking-form { margin-top: 18px; padding: 16px; }
   .section-title { align-items: flex-start; }
   .section-aside { text-align: right; }
   .form-grid { grid-template-columns: 1fr; }
