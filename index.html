@@ -8,7 +8,7 @@
   <title>PARIS SCISSORHANDS — Rezervácia</title>
   <link rel="icon" type="image/png" href="paris-scissorhands-mark.png">
   <link rel="preload" as="image" href="paris-scissorhands-mark.png">
-  <link rel="stylesheet" href="style.css?v=2026-11-17-6">
+  <link rel="stylesheet" href="style.css?v=2026-11-17-7">
 </head>
 <body>
   <div class="page-loader" id="page-loader" aria-hidden="true">
@@ -163,6 +163,8 @@
         section.innerHTML=`<div class="section-title"><h2>${heading}</h2><span class="label" id="slot-date-label"></span></div><div id="slot-area"></div>`;
         dateSection.insertAdjacentElement('afterend',section);
       }
+      const detailsHeading=app.querySelector('#details-title');
+      if(detailsHeading) detailsHeading.textContent='04 / Vaše údaje';
       const dateLabel=section.querySelector('#slot-date-label');
       if(dateLabel) dateLabel.textContent=formatDate(date);
       updateSelectedAppointment();
@@ -170,7 +172,7 @@
     }
     async function getDays() { const r=await api('days');return r.days||[]; }
     function pageNavigation() {
-      return `<nav class="page-navigation" aria-label="Správa termínu"><button class="nav-btn ${page==='manage'?'active':''}" data-page="manage">Môj termín</button><button class="nav-btn ${page==='admin'?'active':''}" data-page="admin">Správa</button></nav>`;
+      return `<nav class="page-navigation" aria-label="Navigácia"><button class="nav-btn ${page==='book'?'active':''}" data-page="book">Rezervácia</button><button class="nav-btn ${page==='manage'?'active':''}" data-page="manage">Môj termín</button><button class="nav-btn ${page==='admin'?'active':''}" data-page="admin">Správa</button></nav>`;
     }
     function header(eyebrow,title,lede) { return `${pageNavigation()}<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><p class="lede">${lede}</p></div>`; }
     function setupPage() {
@@ -182,19 +184,15 @@
       const chosen=selectedDate&&selectedSlot?`${formatDate(selectedDate)} · ${selectedSlot}`:'Vyberte deň a čas';
       app.innerHTML=`<div class="booking-flow">
         <div class="brand-stage" aria-hidden="true"></div>
-        <div class="brand-sticky">
-          <header class="brand-dock" aria-labelledby="brand-wordmark">
-            <h1 class="brand-wordmark" id="brand-wordmark"><span>PARIS</span><span>SCISSORHANDS</span></h1>
-            <nav class="brand-dock-nav" aria-label="Ďalšie možnosti"><button class="nav-btn" data-page="manage">Môj termín</button><button class="nav-btn" data-page="admin">Správa</button></nav>
-          </header>
-          <div class="section-title service-sticky-title"><h2>01 / Služba</h2><span class="section-aside">VYBER SI SVOJ BLOK</span></div>
-        </div>
-        <div class="brand-release-space" aria-hidden="true"></div>
-        </div>
-        <section class="section service-section" id="services">${serviceCards(service)}</section>
+        <header class="brand-dock" aria-labelledby="brand-wordmark">
+          <h1 class="brand-wordmark" id="brand-wordmark"><span>PARIS</span><span>SCISSORHANDS</span></h1>
+          <nav class="brand-dock-nav" aria-label="Navigácia"><button class="nav-btn active" data-page="book">Rezervácia</button><button class="nav-btn" data-page="manage">Môj termín</button><button class="nav-btn" data-page="admin">Správa</button></nav>
+        </header>
+        <section class="section service-section" id="services"><div class="section-title"><h2>01 / Služba</h2><span class="section-aside">VYBER SI SVOJ BLOK</span></div>${serviceCards(service)}</section>
         <section class="section" id="date-section"><div class="section-title"><h2>02 / Dostupný deň</h2></div>${daysMarkup(days,selectedDate)}</section>
         ${selectedDate?`<section class="section" id="slot-section"><div class="section-title"><h2>03 / Voľný čas</h2><span class="label" id="slot-date-label">${esc(formatDate(selectedDate))}</span></div><div id="slot-area"><div class="empty">Načítavam voľné časy…</div></div></section>`:''}
-        <section class="section booking-form"><div class="section-title"><h2>04 / Vaše údaje</h2></div><div class="summary-line"><span>Vybraný termín</span><strong id="selected-appointment">${esc(chosen)}</strong></div><form id="booking-form"><div class="form-grid" style="margin-top:16px"><div class="field"><label for="name">Meno</label><input id="name" name="name" autocomplete="name" required maxlength="80"></div><div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email"></div><div class="field"><label for="phone">Telefón</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div></div><p class="note">Vyplňte e-mail alebo telefón. Potvrdenie a pripomienku pošleme na zvolený kontakt.</p><div class="button-row"><button class="primary" type="submit">Potvrdiť rezerváciu ↗</button></div></form></section>
+        <section class="section booking-form"><div class="section-title"><h2 id="details-title">${selectedDate?'04':'03'} / Vaše údaje</h2></div><div class="summary-line"><span>Vybraný termín</span><strong id="selected-appointment">${esc(chosen)}</strong></div><form id="booking-form"><div class="form-grid" style="margin-top:10px"><div class="field"><label for="name">Meno</label><input id="name" name="name" autocomplete="name" required maxlength="80"></div><div class="field"><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email"></div><div class="field"><label for="phone">Telefón</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div></div><p class="note">Vyplňte e-mail alebo telefón. Potvrdenie a pripomienku pošleme na zvolený kontakt.</p><div class="button-row"><button class="primary" type="submit">Potvrdiť rezerváciu ↗</button></div></form></section>
+      </div>
       `;
       if(selectedDate) await refreshSlotChoices();
       app.querySelector('#booking-form').onsubmit=async e=>{
