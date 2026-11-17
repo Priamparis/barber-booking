@@ -138,7 +138,7 @@ h2 { margin: 0 0 14px; font-family: var(--display); font-size: 20px; letter-spac
 h3 { margin: 0; font-size: 14px; text-transform: uppercase; }
 p { line-height: 1.6; }
 .lede { max-width: 470px; margin: 0; color: var(--muted); font-size: 12px; }
-.section { margin: 24px 0; animation: rise-in .54s ease both; scroll-margin-top: calc(var(--wordmark-size) + 42px); }
+.section { margin: 24px 0; animation: rise-in .54s ease both; scroll-margin-top: calc(var(--wordmark-size) + 60px); }
 .section:nth-of-type(2) { animation-delay: .06s; }
 .section:nth-of-type(3) { animation-delay: .12s; }
 .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--ink); }
