@@ -131,7 +131,7 @@
       if(next==='manage') manageToken=new URLSearchParams(location.hash.slice(1)).get('manage')||sessionStorage.getItem('bb-manage-token')||'';
       document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===next));
       await render();
-      if(returnToServices) app.querySelector('.brand-dock')?.scrollIntoView({behavior:'smooth',block:'start'});
+      if(returnToServices){const dock=app.querySelector('.brand-dock');dock?.scrollIntoView({behavior:'auto',block:'start'});if(dock&&dock.getBoundingClientRect().top<=2)dock.classList.add('is-pinned');}
       else window.scrollTo(0,0);
     }
     function serviceCards(active) { return `<div class="service-grid">${Object.entries(SERVICES).map(([id,s],i)=>`<button class="service-card ${active===id?'selected':''}" data-service="${id}" data-index="0${i+1}"><span class="service-name">${s.name}</span><span class="service-duration">${s.duration===90?'1 h 30 min':s.duration===60?'1 hodina':'30 min'}</span></button>`).join('')}</div>`; }
@@ -195,7 +195,7 @@
       const flow=app.querySelector('.booking-flow'),dock=app.querySelector('.brand-dock');
       if(!flow||!dock)return;
       const revealNavigation=visible=>dock.classList.toggle('is-pinned',visible);
-      const updatePinnedState=()=>{const top=dock.getBoundingClientRect().top;const pinned=dock.classList.contains('is-pinned');if(top<=0)revealNavigation(true);else if(pinned&&top>8)revealNavigation(false);};
+      const updatePinnedState=()=>{const top=dock.getBoundingClientRect().top;const pinned=dock.classList.contains('is-pinned');if(top<=2)revealNavigation(true);else if(pinned&&top>8)revealNavigation(false);};
       dockScrollHandler=()=>requestAnimationFrame(updatePinnedState);window.addEventListener('scroll',dockScrollHandler,{passive:true});updatePinnedState();
       dockResizeHandler=()=>{updateDockClearance();updatePinnedState();};
       window.addEventListener('resize',dockResizeHandler);
