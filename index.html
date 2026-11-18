@@ -195,7 +195,7 @@
       const flow=app.querySelector('.booking-flow'),sentinel=app.querySelector('.brand-dock-sentinel'),dock=app.querySelector('.brand-dock');
       if(!flow||!sentinel||!dock)return;
       const revealNavigation=visible=>dock.classList.toggle('is-pinned',visible);
-      dockObserver=new IntersectionObserver(([entry])=>revealNavigation(!entry.isIntersecting&&entry.boundingClientRect.top<80),{threshold:0,rootMargin:'-80px 0px 0px 0px'});
+      dockObserver=new IntersectionObserver(([entry])=>revealNavigation(!entry.isIntersecting&&entry.boundingClientRect.top<0),{threshold:0,rootMargin:'0px'});
       dockObserver.observe(sentinel);
       dockResizeHandler=()=>updateDockClearance();
       window.addEventListener('resize',dockResizeHandler);
