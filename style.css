@@ -81,7 +81,7 @@ body[data-page="book"] main { margin-top: 0; }
   position: relative;
   display: grid;
   place-items: center;
-  height: max(360px, calc(100svh - var(--wordmark-size) - 39px));
+  height: max(360px, calc(100svh - var(--wordmark-size) - 37px));
   padding: 20px;
   overflow: hidden;
   background-color: #cbc7be;
@@ -227,7 +227,7 @@ body[data-page="book"] > footer { padding-bottom: calc(20px + var(--dock-clearan
   .nav-btn { min-height: 31px; padding: 6px 8px; font-size: 8px; letter-spacing: .035em; }
   main { width: min(100% - 28px, 1320px); margin-top: 20px; }
   body[data-page="book"] main { width: min(100% - 28px, 1320px); }
-  .brand-stage { height: max(340px, calc(100svh - var(--wordmark-size) - 39px)); padding: 16px; }
+  .brand-stage { height: max(340px, calc(100svh - var(--wordmark-size) - 37px)); padding: 16px; }
   .landing-mark { width: clamp(190px, 55vw, 320px); }
   .brand-dock { padding-right: 12px; padding-left: 12px; }
   .brand-wordmark { letter-spacing: -.02em; }
