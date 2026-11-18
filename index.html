@@ -46,7 +46,7 @@
     let page = new URLSearchParams(location.hash.slice(1)).has('manage') ? 'manage' : 'book';
     document.body.dataset.page = page;
     let service = 'cut', selectedDate = '', selectedSlot = '', manageMode = '', manageToken = '';
-    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '', dockObserver = null, dockResizeHandler = null, dockClearance = 0;
+    let adminDate = '', toastTimer, passwordSetup = false, slotRequestId = 0, slotExcludeId = '', dockObserver = null, dockResizeHandler = null, dockScrollHandler = null, dockClearance = 0;
 
     const authLink = new URLSearchParams(location.hash.slice(1));
     if (['invite', 'recovery'].includes(authLink.get('type')) && authLink.get('access_token') && authLink.get('refresh_token')) {
@@ -191,13 +191,13 @@
     function header(eyebrow,title,lede) { return `${pageNavigation()}<div class="page-head"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1></div><p class="lede">${lede}</p></div>`; }
     function watchBrandDock() {
       dockObserver?.disconnect();
-      if(dockResizeHandler)window.removeEventListener('resize',dockResizeHandler);
-      const flow=app.querySelector('.booking-flow'),sentinel=app.querySelector('.brand-dock-sentinel'),dock=app.querySelector('.brand-dock');
-      if(!flow||!sentinel||!dock)return;
+      if(dockResizeHandler)window.removeEventListener('resize',dockResizeHandler);if(dockScrollHandler)window.removeEventListener('scroll',dockScrollHandler);
+      const flow=app.querySelector('.booking-flow'),dock=app.querySelector('.brand-dock');
+      if(!flow||!dock)return;
       const revealNavigation=visible=>dock.classList.toggle('is-pinned',visible);
-      dockObserver=new IntersectionObserver(([entry])=>revealNavigation(!entry.isIntersecting&&entry.boundingClientRect.top<0),{threshold:0,rootMargin:'0px'});
-      dockObserver.observe(sentinel);
-      dockResizeHandler=()=>updateDockClearance();
+      const updatePinnedState=()=>{const top=dock.getBoundingClientRect().top;const pinned=dock.classList.contains('is-pinned');if(top<=0)revealNavigation(true);else if(pinned&&top>8)revealNavigation(false);};
+      dockScrollHandler=()=>requestAnimationFrame(updatePinnedState);window.addEventListener('scroll',dockScrollHandler,{passive:true});updatePinnedState();
+      dockResizeHandler=()=>{updateDockClearance();updatePinnedState();};
       window.addEventListener('resize',dockResizeHandler);
     }
     function updateDockClearance() {
@@ -341,8 +341,8 @@
       if(!configured){setupPage();return;}
       if(page!=='book') {
         dockObserver?.disconnect();
-        if(dockResizeHandler)window.removeEventListener('resize',dockResizeHandler);
-        dockResizeHandler=null;dockClearance=0;document.body.style.removeProperty('--dock-clearance');
+        if(dockResizeHandler)window.removeEventListener('resize',dockResizeHandler);if(dockScrollHandler)window.removeEventListener('scroll',dockScrollHandler);
+        dockScrollHandler=null;dockResizeHandler=null;dockClearance=0;document.body.style.removeProperty('--dock-clearance');
       }
       document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
       app.innerHTML='<div class="empty">Načítavam…</div>';
